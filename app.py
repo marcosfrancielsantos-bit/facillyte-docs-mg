@@ -527,21 +527,59 @@ def preparar_partes_arquivos(arquivos_up: list, etiqueta: str) -> tuple[list, li
     return binarios, textos
 
 
-def chamar_gemini_json(api_key: str, partes_binarias: list, prompt: str) -> dict:
+MODELOS_GEMINI_OPCOES = {
+    "Gemini 4 Carbon — Raciocínio Máximo (Mais Aprofundado)": "gemini-4-carbon",
+    "Gemini 4 Neon — Inteligência de Fronteira + Velocidade": "gemini-4-neon",
+    "Gemini 4 Argon — Raciocínio Eficiente": "gemini-4-argon",
+    "Gemini 3.8 Flash — Rápido com Thinking": "gemini-3.8-flash",
+}
+
+MODELOS_GEMINI_FALLBACK = [
+    "gemini-4-carbon",
+    "gemini-4-neon",
+    "gemini-4-argon",
+    "gemini-4-hydrogen",
+    "gemini-3.8-flash",
+]
+
+
+def chamar_gemini_json(api_key: str, partes_binarias: list, prompt: str, modelo_preferido: str = "gemini-4-carbon") -> dict:
     if not GENAI_AVAILABLE:
         raise RuntimeError("Biblioteca google-genai não instalada.")
     client = genai.Client(api_key=api_key)
-    resp = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=partes_binarias + [prompt],
+    ordem = [modelo_preferido] + [m for m in MODELOS_GEMINI_FALLBACK if m != modelo_preferido]
+    ultimo_erro = None
+    resp = None
+    modelo_usado = modelo_preferido
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        temperature=0.1,
     )
-    txt = resp.text.strip()
+    for modelo in ordem:
+        try:
+            resp = client.models.generate_content(
+                model=modelo,
+                contents=partes_binarias + [prompt],
+                config=config,
+            )
+            modelo_usado = modelo
+            break
+        except Exception as e:
+            ultimo_erro = e
+            err_s = str(e)
+            if any(k in err_s for k in ("404", "NOT_FOUND", "429", "RESOURCE_EXHAUSTED", "PERMISSION_DENIED", "not available")):
+                continue
+            raise
+    if resp is None:
+        raise RuntimeError(f"Nenhum modelo Gemini disponível respondeu. Último erro: {ultimo_erro}")
+    st.session_state["ultimo_modelo_usado"] = modelo_usado
+    txt = (resp.text or "").strip()
     txt = re.sub(r"^```json\s*", "", txt)
     txt = re.sub(r"\s*```$", "", txt)
     return json.loads(txt)
 
 
-def extrair_base_e_confrontantes(api_key: str, rito: str, arq_prop, arq_imovel, arq_planta_mem, arq_comp, texto_obs: str) -> dict:
+def extrair_base_e_confrontantes(api_key: str, rito: str, arq_prop, arq_imovel, arq_planta_mem, arq_comp, texto_obs: str, modelo_preferido: str = 'gemini-4-carbon') -> dict:
     bins, txts = [], []
     for lista, tag in [
         (arq_prop, "PROPRIETÁRIO"),
@@ -622,10 +660,10 @@ Não invente dados ausentes; deixe "" ou 0.0.
 """
     if txts:
         prompt += "\n\nTEXTOS EXTRAÍDOS DOS ARQUIVOS:\n" + "\n\n".join(txts)
-    return chamar_gemini_json(api_key, bins, prompt)
+    return chamar_gemini_json(api_key, bins, prompt, modelo_preferido=modelo_preferido)
 
 
-def extrair_dados_confrontante(api_key: str, conf_atual: dict, arquivos_conf: list, texto_conf: str) -> dict:
+def extrair_dados_confrontante(api_key: str, conf_atual: dict, arquivos_conf: list, texto_conf: str, modelo_preferido: str = 'gemini-4-carbon') -> dict:
     bins, txts = preparar_partes_arquivos(arquivos_conf, f"CONFRONTANTE: {conf_atual.get('nome', '')}")
     if texto_conf.strip():
         txts.append(f"=== OBSERVAÇÕES DO CONFRONTANTE ===\n{texto_conf.strip()}")
@@ -653,7 +691,7 @@ Não invente dados ausentes.
 """
     if txts:
         prompt += "\n\nTEXTOS EXTRAÍDOS:\n" + "\n\n".join(txts)
-    return chamar_gemini_json(api_key, bins, prompt)
+    return chamar_gemini_json(api_key, bins, prompt, modelo_preferido=modelo_preferido)
 
 
 # ==============================================================================
@@ -1105,6 +1143,15 @@ with st.sidebar:
     except Exception:
         secret_key = ""
     api_key = st.text_input("🔑 Chave API Gemini", value=secret_key, type="password", help="Chave AIza... do Google AI Studio.")
+    modelo_label = st.selectbox(
+        "🧠 Motor de IA (Gemini)",
+        list(MODELOS_GEMINI_OPCOES.keys()),
+        index=0,
+        help="Usa Gemini 4 Carbon (mais profundo) por padrão, com fallback automático se a conta não tiver cota nesse modelo.",
+    )
+    modelo_selecionado = MODELOS_GEMINI_OPCOES[modelo_label]
+    if st.session_state.get("ultimo_modelo_usado"):
+        st.caption(f"Última leitura: `{st.session_state['ultimo_modelo_usado']}`")
 
 
 # ── TELA INICIAL: CRIAR OU ABRIR PROJETO ──
@@ -1264,7 +1311,7 @@ if st.session_state["etapa"] == 1:
             else:
                 with st.spinner("Analisando documentos, planta e memorial para abrir as abas dos confrontantes..."):
                     try:
-                        ext = extrair_base_e_confrontantes(api_key, proj["rito"], arq_prop, arq_imovel, arq_planta_mem, arq_comp, texto_obs)
+                        ext = extrair_base_e_confrontantes(api_key, proj["rito"], arq_prop, arq_imovel, arq_planta_mem, arq_comp, texto_obs, modelo_preferido=modelo_selecionado)
                         ext["projeto_id"] = proj["projeto_id"]
                         ext["nome_projeto"] = proj["nome_projeto"]
                         ext["rito"] = proj["rito"]
@@ -1369,7 +1416,7 @@ elif st.session_state["etapa"] == 2:
                         else:
                             with st.spinner(f"Lendo documentos de {c.get('nome', 'confrontante')}..."):
                                 try:
-                                    novo_c = extrair_dados_confrontante(api_key, c, arq_c, txt_c)
+                                    novo_c = extrair_dados_confrontante(api_key, c, arq_c, txt_c, modelo_preferido=modelo_selecionado)
                                     for k, v in novo_c.items():
                                         if v not in ("", None):
                                             c[k] = v

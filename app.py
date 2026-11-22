@@ -6,6 +6,7 @@ import re
 import sqlite3
 import subprocess
 import tempfile
+import time
 import zipfile
 from datetime import datetime
 
@@ -555,21 +556,31 @@ def chamar_gemini_json(api_key: str, partes_binarias: list, prompt: str, modelo_
         response_mime_type="application/json",
         temperature=0.1,
     )
+    erros_recuperaveis = (
+        "404", "NOT_FOUND", "429", "RESOURCE_EXHAUSTED", "PERMISSION_DENIED",
+        "503", "UNAVAILABLE", "500", "504", "high demand", "overloaded", "not available",
+    )
     for modelo in ordem:
-        try:
-            resp = client.models.generate_content(
-                model=modelo,
-                contents=partes_binarias + [prompt],
-                config=config,
-            )
-            modelo_usado = modelo
+        for tentativa in range(2):
+            try:
+                resp = client.models.generate_content(
+                    model=modelo,
+                    contents=partes_binarias + [prompt],
+                    config=config,
+                )
+                modelo_usado = modelo
+                break
+            except Exception as e:
+                ultimo_erro = e
+                err_s = str(e)
+                if any(k in err_s for k in ("503", "UNAVAILABLE", "high demand", "overloaded")) and tentativa == 0:
+                    time.sleep(2)
+                    continue
+                if any(k in err_s for k in erros_recuperaveis):
+                    break
+                raise
+        if resp is not None:
             break
-        except Exception as e:
-            ultimo_erro = e
-            err_s = str(e)
-            if any(k in err_s for k in ("404", "NOT_FOUND", "429", "RESOURCE_EXHAUSTED", "PERMISSION_DENIED", "not available")):
-                continue
-            raise
     if resp is None:
         raise RuntimeError(f"Nenhum modelo Gemini disponível respondeu. Último erro: {ultimo_erro}")
     st.session_state["ultimo_modelo_usado"] = modelo_usado

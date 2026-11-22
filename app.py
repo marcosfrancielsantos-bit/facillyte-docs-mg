@@ -1,3 +1,4 @@
+import base64
 import io
 import json
 import os
@@ -25,20 +26,37 @@ except ImportError:
     GENAI_AVAILABLE = False
 
 # ==============================================================================
-# CONFIGURAÇÃO INICIAL E IDENTIDADE FACILLYTE
+# CONFIGURAÇÃO E IDENTIDADE VISUAL FACILLYTE ENGENHARIA & TOPOGRAFIA
 # ==============================================================================
 st.set_page_config(
     page_title="Facillyte Docs — Funcionário Virtual Cartorial (MG)",
     page_icon="📐",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 DB_PATH = "facillyte_processos.db"
-LOGO_ENG = os.path.join("assets", "logo_facillyte_engenharia.png")
-LOGO_TOPO = os.path.join("assets", "logo_facillyte_topografia.png")
 
-HEX_PRIMARY = "0B2457"
-HEX_ACCENT = "0A8A1C"
+
+def find_logo(filename: str) -> str:
+    for candidate in (filename, os.path.join("assets", filename)):
+        if os.path.exists(candidate):
+            return candidate
+    return filename
+
+
+def img_to_b64(path: str) -> str:
+    if not os.path.exists(path):
+        return ""
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
+
+
+LOGO_ENG = find_logo("logo_facillyte_engenharia.png")
+LOGO_TOPO = find_logo("logo_facillyte_topografia.png")
+
+HEX_PRIMARY = "0B2457"      # Azul-Marinho Oficial Facillyte
+HEX_ACCENT = "0A8A1C"       # Verde Topográfico Oficial Facillyte
 HEX_SLATE = "1E293B"
 HEX_MUTED = "475569"
 HEX_TINT = "F1F5F9"
@@ -50,39 +68,269 @@ RGB_SLATE = RGBColor(0x1E, 0x29, 0x3B)
 RGB_MUTED = RGBColor(0x47, 0x55, 0x69)
 RGB_WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 
+
+def injetar_tema_facillyte():
+    st.markdown(
+        """
+        <style>
+        /* Fundo geral suave e tipografia limpa */
+        .stApp {
+            background-color: #F4F7FA;
+            color: #1E293B;
+        }
+        /* Barra lateral nas cores da Facillyte */
+        section[data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #0B2457 0%, #0F2F6E 100%);
+            color: #FFFFFF;
+        }
+        section[data-testid="stSidebar"] * {
+            color: #F8FAFC !important;
+        }
+        section[data-testid="stSidebar"] .stTextInput input {
+            background-color: rgba(255,255,255,0.12) !important;
+            color: #FFFFFF !important;
+            border: 1px solid rgba(255,255,255,0.3) !important;
+            border-radius: 8px !important;
+        }
+        section[data-testid="stSidebar"] button {
+            border-radius: 8px !important;
+            border: 1px solid rgba(255,255,255,0.22) !important;
+            background-color: rgba(255,255,255,0.08) !important;
+            transition: all 0.2s ease;
+        }
+        section[data-testid="stSidebar"] button:hover {
+            background-color: #0A8A1C !important;
+            border-color: #0A8A1C !important;
+        }
+        section[data-testid="stSidebar"] button[kind="primary"] {
+            background-color: #0A8A1C !important;
+            border-color: #0A8A1C !important;
+            font-weight: 600 !important;
+        }
+
+        /* Cabeçalho Institucional Facillyte */
+        .fac-banner {
+            background: #FFFFFF;
+            border-top: 5px solid #0B2457;
+            border-bottom: 3px solid #0A8A1C;
+            border-radius: 12px;
+            padding: 14px 22px;
+            margin-bottom: 18px;
+            box-shadow: 0 3px 12px rgba(11, 36, 87, 0.07);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        .fac-banner-center {
+            text-align: center;
+            flex: 1;
+        }
+        .fac-banner-title {
+            color: #0B2457;
+            font-size: 1.35rem;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: 0.3px;
+        }
+        .fac-banner-sub {
+            color: #0A8A1C;
+            font-size: 0.92rem;
+            font-weight: 600;
+            margin: 2px 0 0 0;
+        }
+        .fac-pill {
+            display: inline-block;
+            background: #E8F5E9;
+            color: #0A8A1C;
+            border: 1px solid #0A8A1C;
+            padding: 3px 12px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+
+        /* Cards de upload e conteúdo */
+        .fac-card {
+            background: #FFFFFF;
+            border: 1px solid #DCE4EE;
+            border-left: 5px solid #0B2457;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 6px rgba(11, 36, 87, 0.04);
+        }
+        .fac-card-green {
+            border-left-color: #0A8A1C !important;
+        }
+        .fac-card h4 {
+            margin: 0 0 4px 0;
+            color: #0B2457;
+            font-size: 1.03rem;
+        }
+        .fac-card p {
+            margin: 0;
+            color: #475569;
+            font-size: 0.88rem;
+        }
+
+        /* Botões principais no conteúdo */
+        .stButton > button[kind="primary"], .stFormSubmitButton > button[kind="primary"] {
+            background: linear-gradient(90deg, #0B2457 0%, #143A82 100%) !important;
+            color: #FFFFFF !important;
+            border: none !important;
+            border-radius: 9px !important;
+            font-weight: 600 !important;
+            padding: 0.55rem 1.1rem !important;
+            box-shadow: 0 2px 8px rgba(11, 36, 87, 0.22) !important;
+        }
+        .stButton > button[kind="primary"]:hover, .stFormSubmitButton > button[kind="primary"]:hover {
+            background: linear-gradient(90deg, #0A8A1C 0%, #0D9E22 100%) !important;
+            box-shadow: 0 3px 10px rgba(10, 138, 28, 0.28) !important;
+        }
+        .stButton > button[kind="secondary"] {
+            background: #FFFFFF !important;
+            color: #0B2457 !important;
+            border: 1.5px solid #CBD5E1 !important;
+            border-radius: 9px !important;
+            font-weight: 600 !important;
+        }
+        .stButton > button[kind="secondary"]:hover {
+            border-color: #0A8A1C !important;
+            color: #0A8A1C !important;
+        }
+        .stDownloadButton > button {
+            background: linear-gradient(90deg, #0A8A1C 0%, #0E9F24 100%) !important;
+            color: #FFFFFF !important;
+            border: none !important;
+            border-radius: 10px !important;
+            font-weight: 700 !important;
+            font-size: 1.02rem !important;
+            padding: 0.65rem 1.2rem !important;
+        }
+
+        /* Abas dos confrontantes */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+            background: transparent;
+        }
+        .stTabs [data-baseweb="tab"] {
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            border-radius: 8px 8px 0 0;
+            padding: 8px 16px;
+            color: #0B2457;
+            font-weight: 600;
+        }
+        .stTabs [aria-selected="true"] {
+            background: #0B2457 !important;
+            color: #FFFFFF !important;
+            border-color: #0B2457 !important;
+        }
+
+        /* Métricas em cards brancos */
+        div[data-testid="stMetric"] {
+            background: #FFFFFF;
+            border: 1px solid #DCE4EE;
+            border-top: 4px solid #0B2457;
+            border-radius: 10px;
+            padding: 12px 16px;
+            box-shadow: 0 2px 6px rgba(11, 36, 87, 0.04);
+        }
+
+        /* Barra de progresso em verde Facillyte */
+        .stProgress > div > div > div > div {
+            background: linear-gradient(90deg, #0B2457 0%, #0A8A1C 100%) !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_banner(titulo: str, subtitulo: str, badge: str = ""):
+    b64_eng = img_to_b64(LOGO_ENG)
+    b64_topo = img_to_b64(LOGO_TOPO)
+    img_eng = f'<img src="data:image/png;base64,{b64_eng}" style="height:56px;object-fit:contain;">' if b64_eng else '<strong style="color:#0B2457;">FACILLYTE<br>ENGENHARIA</strong>'
+    img_topo = f'<img src="data:image/png;base64,{b64_topo}" style="height:60px;object-fit:contain;">' if b64_topo else '<strong style="color:#0A8A1C;">FACILLYTE<br>TOPOGRAFIA</strong>'
+    badge_html = f'<div class="fac-pill">{badge}</div>' if badge else ""
+    st.markdown(
+        f"""
+        <div class="fac-banner">
+            <div>{img_eng}</div>
+            <div class="fac-banner-center">
+                <div class="fac-banner-title">{titulo}</div>
+                <div class="fac-banner-sub">{subtitulo}</div>
+                {badge_html}
+            </div>
+            <div>{img_topo}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# ==============================================================================
+# CATÁLOGO DE RITOS (MG) E DOCUMENTOS EXIGIDOS POR SERVIÇO
+# ==============================================================================
 RITOS_MG = {
+    "Georreferenciamento (SIGEF/INCRA)": {
+        "icone": "🛰️",
+        "fundamento": "Art. 176, §§ 3º a 5º, e art. 213 da Lei nº 6.015/1973; Lei nº 10.267/2001; Decretos nº 4.449/2002 e 5.570/2005; arts. 891 (§ 9º) e 1.027+ do Provimento Conjunto nº 93/2020 (CGJ/MG).",
+        "docs_proprietario": "RG, CPF, Certidão de Casamento/Nascimento (com regime de bens), Pacto Antenupcial (se houver), Endereço; PJ: Contrato Social; Espólio: Termo de Inventariante + Óbito.",
+        "docs_imovel": "Matrícula atualizada, CCIR quitado, CND do ITR, Recibo CAR, Certificação/Planilha SIGEF (.xlsx/.ods/.pdf) e ART quitada.",
+        "docs_confrontante": "RG/CPF ou CNPJ, endereço, nº da Matrícula/Posse confrontante; Espólio: Inventariante + Óbito; PJ: Contrato Social.",
+        "exige_confrontantes": True,
+        "exige_fmp": False,
+        "exige_valor_mercado": True,
+    },
     "Retificação Administrativa de Área": {
-        "fundamento": "Art. 213, II, da Lei nº 6.015/1973 e arts. 889 a 900 (art. 891) do Provimento Conjunto nº 93/2020 (CGJ/MG)",
+        "icone": "📏",
+        "fundamento": "Art. 213, II, da Lei nº 6.015/1973 e arts. 889 a 900 (art. 891) do Provimento Conjunto nº 93/2020 (CGJ/MG).",
+        "docs_proprietario": "RG, CPF, Certidão de Casamento/Nascimento (com regime de bens), Pacto Antenupcial (se houver) e Comprovante de Endereço.",
+        "docs_imovel": "Matrícula atualizada, CCIR quitado, CND do ITR, Recibo CAR, Certificação SIGEF (quando exigível) e ART quitada.",
+        "docs_confrontante": "RG/CPF ou CNPJ, estado civil, endereço e nº da Matrícula/Posse confrontante (ou Inventariante/Contrato Social).",
         "exige_confrontantes": True,
         "exige_fmp": False,
         "exige_valor_mercado": True,
     },
     "Desmembramento Rural": {
-        "fundamento": "Arts. 176 e 246 da Lei nº 6.015/1973, art. 65 da Lei nº 4.504/1964 e art. 991 do Provimento Conjunto nº 93/2020 (CGJ/MG)",
+        "icone": "🌾",
+        "fundamento": "Arts. 176 e 246 da Lei nº 6.015/1973; art. 65 da Lei nº 4.504/1964 (FMP); art. 991 do Provimento Conjunto nº 93/2020 (CGJ/MG).",
+        "docs_proprietario": "RG, CPF, Certidão de Casamento/Nascimento (com regime de bens) e Comprovante de Endereço.",
+        "docs_imovel": "Matrícula atualizada, CCIR quitado, CND do ITR, Recibo CAR, Certificações SIGEF das glebas (quando exigível) e ART quitada.",
+        "docs_confrontante": "Opcional se não houver alteração do perímetro externo (obrigatório caso cumule com retificação).",
         "exige_confrontantes": False,
         "exige_fmp": True,
         "exige_valor_mercado": True,
     },
     "Estremação (Condomínio Pro Diviso)": {
-        "fundamento": "Arts. 1.149 a 1.155 do Provimento Conjunto nº 93/2020 (CGJ/MG) e art. 65 da Lei nº 4.504/1964",
+        "icone": "🧭",
+        "fundamento": "Arts. 1.149 a 1.155 do Provimento Conjunto nº 93/2020 (CGJ/MG) e art. 65 da Lei nº 4.504/1964 (FMP).",
+        "docs_proprietario": "RG, CPF, Certidão de Casamento/Nascimento, prova da fração ideal/posse localizada (> 5 anos) e endereço.",
+        "docs_imovel": "Matrícula mãe em condomínio, CCIR, CND ITR, CAR, SIGEF (se aplicável), ART quitada e minuta/escritura de estremação.",
+        "docs_confrontante": "RG/CPF, endereço e matrícula dos confrontantes lindeiros (internos do condomínio e externos).",
         "exige_confrontantes": True,
         "exige_fmp": True,
         "exige_valor_mercado": True,
     },
     "Inserção de Dados / Medidas Atualizadas": {
-        "fundamento": "Art. 213, I e II, da Lei nº 6.015/1973 e art. 891 do Provimento Conjunto nº 93/2020 (CGJ/MG)",
-        "exige_confrontantes": True,
-        "exige_fmp": False,
-        "exige_valor_mercado": True,
-    },
-    "Georreferenciamento (SIGEF/INCRA)": {
-        "fundamento": "Art. 176, §§ 3º a 5º, Lei nº 6.015/1973, Lei nº 10.267/2001, Decretos nº 4.449/2002 e 5.570/2005 e arts. 891 (§ 9º) e 1.027+ do Prov. Conj. nº 93/2020",
+        "icone": "📐",
+        "fundamento": "Art. 213, I e II, da Lei nº 6.015/1973 e art. 891 do Provimento Conjunto nº 93/2020 (CGJ/MG).",
+        "docs_proprietario": "RG, CPF, Certidão de Casamento/Nascimento (filiação, profissão e regime de bens) e Comprovante de Endereço.",
+        "docs_imovel": "Matrícula/Transcrição atualizada, CCIR, CND ITR, CAR (se rural) ou CTM/IPTU (se urbano) e ART quitada.",
+        "docs_confrontante": "RG/CPF, endereço e nº da Matrícula/Transcrição de cada confrontante lindeiro.",
         "exige_confrontantes": True,
         "exige_fmp": False,
         "exige_valor_mercado": True,
     },
     "Averbação Diversa (CAR / CCIR / Construção / Subjetiva)": {
-        "fundamento": "Arts. 167, II, e 246 da Lei nº 6.015/1973, art. 717 do Provimento Conjunto nº 93/2020 (CGJ/MG) e Provimento nº 61/2017/CNJ",
+        "icone": "📝",
+        "fundamento": "Arts. 167, II, e 246 da Lei nº 6.015/1973; art. 717 do Provimento Conjunto nº 93/2020 (CGJ/MG); Provimento nº 61/2017/CNJ.",
+        "docs_proprietario": "RG, CPF, Certidão de Casamento/Nascimento atualizada e Comprovante de Endereço.",
+        "docs_imovel": "Matrícula atualizada + documento específico do ato (CAR, CCIR, Habite-se/CND INSS, Certidão Civil, etc.).",
+        "docs_confrontante": "Não exigido para averbações simples.",
         "exige_confrontantes": False,
         "exige_fmp": False,
         "exige_valor_mercado": False,
@@ -91,18 +339,19 @@ RITOS_MG = {
 
 
 # ==============================================================================
-# BANCO DE DADOS SQLITE (HISTÓRICO DE CLIENTES E PROCESSOS)
+# BANCO DE DADOS SQLITE (PROJETOS)
 # ==============================================================================
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
         """
-        CREATE TABLE IF NOT EXISTS processos (
+        CREATE TABLE IF NOT EXISTS projetos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome_projeto TEXT,
             criado_em TEXT,
+            atualizado_em TEXT,
             rito TEXT,
             proprietario TEXT,
-            imovel TEXT,
             matricula TEXT,
             comarca TEXT,
             dados_json TEXT
@@ -113,41 +362,126 @@ def init_db():
     conn.close()
 
 
-def salvar_processo(dados: dict):
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        """
-        INSERT INTO processos (criado_em, rito, proprietario, imovel, matricula, comarca, dados_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            datetime.now().strftime("%d/%m/%Y %H:%M"),
-            dados.get("rito", ""),
-            dados.get("proprietario_nome", ""),
-            dados.get("imovel_denominacao", ""),
-            dados.get("matricula_numero", ""),
-            dados.get("comarca_uf", ""),
-            json.dumps(dados, ensure_ascii=False),
-        ),
+def salvar_projeto(dados: dict) -> int:
+    agora = datetime.now().strftime("%d/%m/%Y %H:%M")
+    nome_proj = (dados.get("nome_projeto") or "").strip() or (
+        f"{dados.get('imovel_denominacao') or 'Projeto Sem Nome'} — Mat. {dados.get('matricula_numero') or 'S/N'}"
     )
+    dados["nome_projeto"] = nome_proj
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    proj_id = dados.get("projeto_id")
+    if proj_id:
+        cur.execute(
+            """
+            UPDATE projetos
+            SET nome_projeto=?, atualizado_em=?, rito=?, proprietario=?, matricula=?, comarca=?, dados_json=?
+            WHERE id=?
+            """,
+            (
+                nome_proj, agora, dados.get("rito", ""), dados.get("proprietario_nome", ""),
+                dados.get("matricula_numero", ""), dados.get("comarca_uf", ""),
+                json.dumps(dados, ensure_ascii=False), proj_id,
+            ),
+        )
+    else:
+        cur.execute(
+            """
+            INSERT INTO projetos (nome_projeto, criado_em, atualizado_em, rito, proprietario, matricula, comarca, dados_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                nome_proj, agora, agora, dados.get("rito", ""), dados.get("proprietario_nome", ""),
+                dados.get("matricula_numero", ""), dados.get("comarca_uf", ""),
+                json.dumps(dados, ensure_ascii=False),
+            ),
+        )
+        proj_id = cur.lastrowid
+        dados["projeto_id"] = proj_id
     conn.commit()
     conn.close()
+    return proj_id
 
 
-def listar_processos():
+def listar_projetos():
     conn = sqlite3.connect(DB_PATH)
-    cur = conn.execute(
-        "SELECT id, criado_em, rito, proprietario, imovel, matricula, comarca, dados_json "
-        "FROM processos ORDER BY id DESC LIMIT 50"
-    )
-    rows = cur.fetchall()
+    rows = conn.execute(
+        "SELECT id, nome_projeto, rito, atualizado_em, dados_json FROM projetos ORDER BY id DESC LIMIT 100"
+    ).fetchall()
     conn.close()
     return rows
 
 
+def excluir_projeto(proj_id: int):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("DELETE FROM projetos WHERE id=?", (proj_id,))
+    conn.commit()
+    conn.close()
+
+
+def novo_projeto_vazio(nome: str = "", rito: str = None) -> dict:
+    return {
+        "projeto_id": None,
+        "nome_projeto": nome,
+        "rito": rito or list(RITOS_MG.keys())[0],
+        "proprietario_tipo": "PF",
+        "proprietario_nome": "",
+        "proprietario_doc": "",
+        "proprietario_rg": "",
+        "proprietario_nac": "brasileiro(a)",
+        "proprietario_estado_civil": "",
+        "regime_bens": "",
+        "proprietario_prof": "",
+        "proprietario_filiacao": "",
+        "proprietario_endereco": "",
+        "proprietario_telefone": "",
+        "proprietario_email": "",
+        "conjuge_nome": "",
+        "conjuge_cpf": "",
+        "conjuge_rg": "",
+        "conjuge_prof": "",
+        "representante_legal_ou_inventariante": "",
+        "imovel_denominacao": "",
+        "imovel_municipio": "",
+        "comarca_uf": "",
+        "cartorio_cns": "",
+        "matricula_numero": "",
+        "livro_numero": "2",
+        "incra_sncr": "",
+        "cib_nirf": "",
+        "car_numero": "",
+        "sigef_codigo": "",
+        "sigef_data": "",
+        "art_numero": "",
+        "area_matricula_ha": 0.0,
+        "area_ccir_ha": 0.0,
+        "area_memorial_ha": 0.0,
+        "perimetro_m": 0.0,
+        "fmp_municipio_ha": 3.0,
+        "valor_mercado_num": "",
+        "valor_mercado_extenso": "",
+        "memorial_texto": "",
+        "glebas": [{"nome": "Gleba 01", "area_ha": 0.0, "perimetro_m": 0.0, "sigef": "", "valor_rs": ""}],
+        "confrontantes": [],
+        "analise_base_feita": False,
+    }
+
+
 # ==============================================================================
-# LEITURA DE ARQUIVOS HETEROGÊNEOS (WORD, EXCEL/ODS SIGEF, PDF/IMAGENS)
+# LEITORES DE ARQUIVOS (WORD, RTF TOPOCAD 2000, EXCEL/ODS SIGEF, PDF, IMAGENS)
 # ==============================================================================
+def ler_rtf_bytes(file_bytes: bytes) -> str:
+    raw = file_bytes.decode("latin-1", errors="ignore")
+    raw = re.sub(r"\\'([0-9a-fA-F]{2})", lambda m: bytes.fromhex(m.group(1)).decode("cp1252", errors="ignore"), raw)
+    raw = re.sub(r"\{\\(?:fonttbl|colortbl|stylesheet|info|pict|object)[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", " ", raw)
+    raw = re.sub(r"\\par[d]?|\\line", "\n", raw)
+    raw = re.sub(r"\\[a-zA-Z]+-?\d* ?", " ", raw)
+    raw = raw.replace("{", "").replace("}", "")
+    raw = re.sub(r"[ \t]+", " ", raw)
+    raw = re.sub(r"\n\s*\n+", "\n", raw)
+    return raw.strip()
+
+
 def ler_docx_bytes(file_bytes: bytes) -> str:
     d = docx.Document(io.BytesIO(file_bytes))
     partes = [p.text for p in d.paragraphs if p.text.strip()]
@@ -165,44 +499,71 @@ def ler_planilha_sigef(file_bytes: bytes, filename: str) -> str:
         for sheet in xls.sheet_names[:6]:
             df = xls.parse(sheet).dropna(how="all")
             resumo.append(f"--- Aba: {sheet} ({len(df)} linhas) ---")
-            resumo.append(df.head(60).to_string(index=False))
+            resumo.append(df.head(80).to_string(index=False))
         return "\n".join(resumo)
     except Exception as e:
         return f"[Aviso ao ler planilha {filename}: {e}]"
 
 
-def extrair_com_gemini(api_key: str, arquivos_up: list, texto_livre: str) -> dict:
-    if not GENAI_AVAILABLE:
-        raise RuntimeError("Biblioteca google-genai não instalada.")
-    client = genai.Client(api_key=api_key)
-
-    partes_conteudo = []
-    textos_extraidos = []
-
-    if texto_livre.strip():
-        textos_extraidos.append(f"=== OBSERVAÇÕES / MEMORIAL / WHATSAPP ===\n{texto_livre.strip()}")
-
-    for up in arquivos_up:
+def preparar_partes_arquivos(arquivos_up: list, etiqueta: str) -> tuple[list, list]:
+    binarios, textos = [], []
+    for up in arquivos_up or []:
         raw = up.read()
         up.seek(0)
         fname = up.name.lower()
         if fname.endswith(".docx"):
-            textos_extraidos.append(f"=== WORD: {up.name} ===\n{ler_docx_bytes(raw)}")
+            textos.append(f"=== [{etiqueta}] WORD: {up.name} ===\n{ler_docx_bytes(raw)}")
+        elif fname.endswith(".rtf"):
+            textos.append(f"=== [{etiqueta}] RTF (TopoCAD/AutoCAD): {up.name} ===\n{ler_rtf_bytes(raw)}")
         elif fname.endswith((".xlsx", ".ods")):
-            textos_extraidos.append(ler_planilha_sigef(raw, up.name))
+            textos.append(f"[{etiqueta}] " + ler_planilha_sigef(raw, up.name))
         elif fname.endswith(".txt"):
-            textos_extraidos.append(f"=== TXT: {up.name} ===\n{raw.decode('utf-8', errors='ignore')}")
+            textos.append(f"=== [{etiqueta}] TXT: {up.name} ===\n{raw.decode('utf-8', errors='ignore')}")
         elif fname.endswith(".pdf"):
-            partes_conteudo.append(types.Part.from_bytes(data=raw, mime_type="application/pdf"))
+            binarios.append(types.Part.from_bytes(data=raw, mime_type="application/pdf"))
         elif fname.endswith((".png", ".jpg", ".jpeg", ".webp")):
             mime = "image/png" if fname.endswith(".png") else "image/jpeg"
-            partes_conteudo.append(types.Part.from_bytes(data=raw, mime_type=mime))
+            binarios.append(types.Part.from_bytes(data=raw, mime_type=mime))
+    return binarios, textos
 
-    prompt = """
-Você é um analista documental cartorial sênior de Minas Gerais (Facillyte Topografia).
-Analise TODOS os documentos anexados (PDFs, fotos de RG/CPF/certidões/CCIR/ITR/CAR/matrículas, planilhas SIGEF e textos)
-e retorne APENAS um JSON válido (sem markdown) com exatamente estas chaves:
-{
+
+def chamar_gemini_json(api_key: str, partes_binarias: list, prompt: str) -> dict:
+    if not GENAI_AVAILABLE:
+        raise RuntimeError("Biblioteca google-genai não instalada.")
+    client = genai.Client(api_key=api_key)
+    resp = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=partes_binarias + [prompt],
+    )
+    txt = resp.text.strip()
+    txt = re.sub(r"^```json\s*", "", txt)
+    txt = re.sub(r"\s*```$", "", txt)
+    return json.loads(txt)
+
+
+def extrair_base_e_confrontantes(api_key: str, rito: str, arq_prop, arq_imovel, arq_planta_mem, arq_comp, texto_obs: str) -> dict:
+    bins, txts = [], []
+    for lista, tag in [
+        (arq_prop, "PROPRIETÁRIO"),
+        (arq_imovel, "IMÓVEL/CADASTROS"),
+        (arq_planta_mem, "PLANTA E MEMORIAL AUTOCAD/TOPOCAD"),
+        (arq_comp, "COMPLEMENTAR"),
+    ]:
+        b, t = preparar_partes_arquivos(lista, tag)
+        bins.extend(b)
+        txts.extend(t)
+    if texto_obs.strip():
+        txts.append(f"=== OBSERVAÇÕES / MEMORIAL COLADO ===\n{texto_obs.strip()}")
+
+    prompt = f"""
+Você é um analista documental cartorial de Minas Gerais (Facillyte Topografia).
+Rito selecionado: {rito}.
+Leia TODOS os documentos do proprietário, do imóvel, da PLANTA e do MEMORIAL DESCRITIVO (AutoCAD / TopoCAD 2000 / SIGEF).
+1. Extraia os dados completos do proprietário (e cônjuge/regime de bens ou inventariante/representante), imóvel, matrícula, cadastros (CCIR/SNCR, CIB/NIRF, CAR, SIGEF, ART), áreas, perímetro, valor de mercado e texto integral do memorial descritivo.
+2. Identifique TODOS os confrontantes citados na planta e no memorial descritivo (sem duplicatas, marcando "imovel_publico_ou_estrada": true se for estrada/rio/rua/área pública). Para cada confrontante, crie um item em "confrontantes" com o nome exato reconhecido na planta/memorial, matrícula/CNS se já aparecer, e se há menção a espólio/falecido ou PJ.
+
+Retorne APENAS um JSON válido (sem markdown) com estas chaves:
+{{
   "proprietario_nome": "",
   "proprietario_tipo": "PF",
   "proprietario_doc": "",
@@ -240,11 +601,9 @@ e retorne APENAS um JSON válido (sem markdown) com exatamente estas chaves:
   "valor_mercado_num": "",
   "valor_mercado_extenso": "",
   "memorial_texto": "",
-  "glebas": [
-    {"nome": "Gleba 01", "area_ha": 0.0, "perimetro_m": 0.0, "sigef": "", "valor_rs": ""}
-  ],
+  "glebas": [],
   "confrontantes": [
-    {
+    {{
       "nome": "",
       "tipo": "PF",
       "doc": "",
@@ -254,130 +613,144 @@ e retorne APENAS um JSON válido (sem markdown) com exatamente estas chaves:
       "matricula": "",
       "cns": "",
       "representante_ou_inventariante": "",
-      "falecido": false
-    }
+      "falecido": false,
+      "imovel_publico_ou_estrada": false
+    }}
   ]
-}
-Regras: não invente números ausentes (deixe vazio "" ou 0.0). Se detectar confrontante falecido ou espólio, marque "falecido": true e extraia o inventariante se constar.
+}}
+Não invente dados ausentes; deixe "" ou 0.0.
 """
-    if textos_extraidos:
-        prompt += "\n\nCONTEÚDO EXTRAÍDO DE ARQUIVOS DE TEXTO/WORD/SIGEF:\n" + "\n\n".join(textos_extraidos)
+    if txts:
+        prompt += "\n\nTEXTOS EXTRAÍDOS DOS ARQUIVOS:\n" + "\n\n".join(txts)
+    return chamar_gemini_json(api_key, bins, prompt)
 
-    partes_conteudo.append(prompt)
-    resp = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=partes_conteudo,
-    )
-    raw_text = resp.text.strip()
-    raw_text = re.sub(r"^```json\s*", "", raw_text)
-    raw_text = re.sub(r"\s*```$", "", raw_text)
-    return json.loads(raw_text)
+
+def extrair_dados_confrontante(api_key: str, conf_atual: dict, arquivos_conf: list, texto_conf: str) -> dict:
+    bins, txts = preparar_partes_arquivos(arquivos_conf, f"CONFRONTANTE: {conf_atual.get('nome', '')}")
+    if texto_conf.strip():
+        txts.append(f"=== OBSERVAÇÕES DO CONFRONTANTE ===\n{texto_conf.strip()}")
+    prompt = f"""
+Você é um analista documental cartorial de MG.
+Extraia os dados completos deste CONFRONTANTE específico a partir dos documentos anexados (RG, CPF, certidão de casamento, matrícula confrontante, termo de inventariante/óbito ou contrato social).
+Nome reconhecido na planta/memorial: "{conf_atual.get('nome', '')}".
+Matrícula prévia (se houver): "{conf_atual.get('matricula', '')}".
+
+Retorne APENAS um JSON válido com estas chaves:
+{{
+  "nome": "",
+  "tipo": "PF",
+  "doc": "",
+  "rg": "",
+  "qualificacao": "brasileiro(a), estado civil, profissão",
+  "endereco": "",
+  "matricula": "",
+  "cns": "",
+  "representante_ou_inventariante": "",
+  "falecido": false,
+  "imovel_publico_ou_estrada": false
+}}
+Não invente dados ausentes.
+"""
+    if txts:
+        prompt += "\n\nTEXTOS EXTRAÍDOS:\n" + "\n\n".join(txts)
+    return chamar_gemini_json(api_key, bins, prompt)
 
 
 # ==============================================================================
 # MOTOR DE AUDITORIA ANTI-DEVOLUTIVA (MG)
 # ==============================================================================
 def auditar_processo(d: dict) -> list[dict]:
-    alertas = []  # {"nivel": "VERMELHO"|"AMARELO"|"VERDE", "regra": str, "detalhe": str}
+    alertas = []
     rito = d.get("rito", "")
-    regra_rito = RITOS_MG.get(rito, {})
+    regra = RITOS_MG.get(rito, {})
 
-    # 1. Qualificação do proprietário e cônjuge
     if not d.get("proprietario_nome") or not d.get("proprietario_doc"):
-        alertas.append({"nivel": "VERMELHO", "regra": "Qualificação do Proprietário", "detalhe": "Nome ou CPF/CNPJ do proprietário não informado (Provimento nº 61/2017/CNJ)."})
+        alertas.append({"nivel": "VERMELHO", "regra": "Qualificação do Proprietário", "detalhe": "Nome ou CPF/CNPJ do proprietário não informado (Prov. nº 61/2017/CNJ)."})
     else:
-        alertas.append({"nivel": "VERDE", "regra": "Qualificação do Proprietário", "detalhe": f"{d['proprietario_nome']} ({d['proprietario_doc']}) identificado."})
+        alertas.append({"nivel": "VERDE", "regra": "Qualificação do Proprietário", "detalhe": f"{d['proprietario_nome']} ({d['proprietario_doc']})."})
 
     ec = (d.get("proprietario_estado_civil") or "").lower()
     if "casad" in ec or "união" in ec or "uniao" in ec:
         if not d.get("conjuge_nome") or not d.get("regime_bens"):
-            alertas.append({"nivel": "VERMELHO", "regra": "Cônjuge e Regime de Bens", "detalhe": "Proprietário casado/união estável sem nome do cônjuge ou regime de bens informado (causa frequente de nota devolutiva em MG)."})
+            alertas.append({"nivel": "VERMELHO", "regra": "Cônjuge e Regime de Bens", "detalhe": "Proprietário casado/união estável sem nome do cônjuge ou regime de bens."})
         else:
-            alertas.append({"nivel": "VERDE", "regra": "Cônjuge e Regime de Bens", "detalhe": f"Cônjuge {d['conjuge_nome']} e regime '{d['regime_bens']}' preenchidos."})
-            if "parcial" not in d.get("regime_bens", "").lower():
-                alertas.append({"nivel": "AMARELO", "regra": "Pacto Antenupcial", "detalhe": "Regime diverso da comunhão parcial: conferir se o Pacto Antenupcial está registrado no Livro 3 (CRI)."})
+            alertas.append({"nivel": "VERDE", "regra": "Cônjuge e Regime de Bens", "detalhe": f"Cônjuge {d['conjuge_nome']} — {d['regime_bens']}."})
+            if "parcial" not in (d.get("regime_bens") or "").lower():
+                alertas.append({"nivel": "AMARELO", "regra": "Pacto Antenupcial", "detalhe": "Regime diverso da comunhão parcial: verificar registro do Pacto Antenupcial no Livro 3."})
 
     if d.get("proprietario_tipo") in ("PJ", "Espólio") and not d.get("representante_legal_ou_inventariante"):
-        alertas.append({"nivel": "VERMELHO", "regra": "Representação Legal / Espólio", "detalhe": f"Proprietário é {d['proprietario_tipo']}, mas não há representante legal ou inventariante informado."})
+        alertas.append({"nivel": "VERMELHO", "regra": "Representação Legal / Espólio", "detalhe": f"Proprietário é {d['proprietario_tipo']} sem representante legal/inventariante informado."})
 
-    # 2. Valor Real e de Mercado (Lei Estadual 15.424/2004)
-    if regra_rito.get("exige_valor_mercado"):
-        if not d.get("valor_mercado_num"):
-            alertas.append({"nivel": "VERMELHO", "regra": "Valor Real e de Mercado (Lei Est. 15.424/2004)", "detalhe": "Valor de mercado ausente — obrigatório para cálculo da Tabela 4 de emolumentos em MG (art. 10, § 3º, XVI)."})
+    if regra.get("exige_valor_mercado"):
+        if not (d.get("valor_mercado_num") or "").strip():
+            alertas.append({"nivel": "VERMELHO", "regra": "Valor Real e de Mercado (Lei Est. 15.424/2004)", "detalhe": "Obrigatório declarar valor real e de mercado (Tabela 4 de emolumentos em MG)."})
         else:
-            alertas.append({"nivel": "VERDE", "regra": "Valor Real e de Mercado (Lei Est. 15.424/2004)", "detalhe": f"Valor declarado: R$ {d['valor_mercado_num']}."})
+            alertas.append({"nivel": "VERDE", "regra": "Valor Real e de Mercado", "detalhe": f"R$ {d['valor_mercado_num']}."})
 
-    # 3. Conferência Cruzada de Áreas (Matrícula x CCIR x Memorial)
     a_mat = float(d.get("area_matricula_ha") or 0)
     a_ccir = float(d.get("area_ccir_ha") or 0)
     a_mem = float(d.get("area_memorial_ha") or 0)
-    if a_mat > 0 and a_mem > 0:
-        diff = abs(a_mat - a_mem)
-        if diff > 0.0005:
-            if rito == "Georreferenciamento (SIGEF/INCRA)":
-                alertas.append({"nivel": "AMARELO", "regra": "Divergência Matrícula x Memorial", "detalhe": f"Área da matrícula ({a_mat:.4f} ha) diverge do memorial ({a_mem:.4f} ha). Sugestão automática: acumular Georreferenciamento com Retificação Administrativa (art. 891, § 9º, Prov. Conj. 93/2020)."})
-            elif rito == "Inserção de Dados / Medidas Atualizadas":
-                alertas.append({"nivel": "VERMELHO", "regra": "Alteração de Área na Inserção de Medidas", "detalhe": f"A área apurada ({a_mem:.4f} ha) diverge da matrícula ({a_mat:.4f} ha). Enquadrar como Retificação Administrativa (art. 213, II)."})
-            else:
-                alertas.append({"nivel": "AMARELO", "regra": "Diferença de Área Registrada x Apurada", "detalhe": f"Diferença de {diff:.4f} ha entre matrícula ({a_mat:.4f} ha) e memorial ({a_mem:.4f} ha) — conferir anuência de todos os confrontantes."})
+    if a_mat > 0 and a_mem > 0 and abs(a_mat - a_mem) > 0.0005:
+        if rito == "Georreferenciamento (SIGEF/INCRA)":
+            alertas.append({"nivel": "AMARELO", "regra": "Divergência Matrícula x Memorial", "detalhe": f"Matrícula ({a_mat:.4f} ha) difere do memorial ({a_mem:.4f} ha): acumular Georreferenciamento com Retificação (art. 891, § 9º, Prov. Conj. 93/2020)."})
+        elif rito == "Inserção de Dados / Medidas Atualizadas":
+            alertas.append({"nivel": "VERMELHO", "regra": "Alteração de Área na Inserção de Medidas", "detalhe": f"Memorial ({a_mem:.4f} ha) difere da matrícula ({a_mat:.4f} ha): mudar rito para Retificação Administrativa."})
         else:
-            alertas.append({"nivel": "VERDE", "regra": "Compatibilidade Matrícula x Memorial", "detalhe": f"Área do memorial ({a_mem:.4f} ha) compatível com a matrícula."})
+            alertas.append({"nivel": "AMARELO", "regra": "Diferença de Área", "detalhe": f"Diferença de {abs(a_mat - a_mem):.4f} ha entre matrícula e memorial — conferir anuências."})
+    elif a_mat > 0 and a_mem > 0:
+        alertas.append({"nivel": "VERDE", "regra": "Compatibilidade de Áreas", "detalhe": f"Área do memorial ({a_mem:.4f} ha) compatível com a matrícula."})
 
     if a_ccir > 0 and a_mem > 0 and abs(a_ccir - a_mem) > 0.05:
-        alertas.append({"nivel": "AMARELO", "regra": "Divergência CCIR/ITR x Memorial", "detalhe": f"Área do CCIR ({a_ccir:.4f} ha) diverge da área do memorial ({a_mem:.4f} ha). Atualizar CCIR/SNCR se exigido pela serventia."})
+        alertas.append({"nivel": "AMARELO", "regra": "CCIR x Memorial", "detalhe": f"Área do CCIR ({a_ccir:.4f} ha) difere do memorial ({a_mem:.4f} ha)."})
 
-    # 4. Soma de Áreas e Fração Mínima de Parcelamento (FMP)
-    if regra_rito.get("exige_fmp"):
+    if regra.get("exige_fmp"):
         fmp = float(d.get("fmp_municipio_ha") or 0)
         glebas = [g for g in d.get("glebas", []) if float(g.get("area_ha") or 0) > 0]
         if not glebas:
-            alertas.append({"nivel": "VERMELHO", "regra": "Quadro de Glebas / Parcelas", "detalhe": "Nenhuma gleba/parcela informada para o desmembramento ou estremação."})
+            alertas.append({"nivel": "VERMELHO", "regra": "Glebas / Parcelas", "detalhe": "Informe as glebas e a área remanescente."})
         else:
             soma = sum(float(g.get("area_ha") or 0) for g in glebas)
             alvo = a_mem if a_mem > 0 else a_mat
             if alvo > 0 and abs(soma - alvo) > 0.001:
-                alertas.append({"nivel": "VERMELHO", "regra": "Fechamento de Áreas (Glebas + Remanescente)", "detalhe": f"Soma das parcelas ({soma:.4f} ha) não bate com a área total ({alvo:.4f} ha). Diferença: {abs(soma - alvo):.4f} ha."})
+                alertas.append({"nivel": "VERMELHO", "regra": "Soma de Áreas", "detalhe": f"Soma das glebas ({soma:.4f} ha) não fecha com o total ({alvo:.4f} ha)."})
             else:
-                alertas.append({"nivel": "VERDE", "regra": "Fechamento de Áreas", "detalhe": f"Soma das {len(glebas)} parcelas ({soma:.4f} ha) fecha com a área total."})
-            if fmp > 0:
-                abaixo = [g["nome"] for g in glebas if float(g.get("area_ha") or 0) < fmp]
-                if abaixo:
-                    alertas.append({"nivel": "VERMELHO", "regra": "Fração Mínima de Parcelamento (FMP)", "detalhe": f"Parcela(s) abaixo da FMP ({fmp:.4f} ha): {', '.join(abaixo)} — vedado pelo art. 65 da Lei nº 4.504/64 e arts. 991/1.149 do Prov. Conj. 93/2020."})
-                else:
-                    alertas.append({"nivel": "VERDE", "regra": "Fração Mínima de Parcelamento (FMP)", "detalhe": f"Todas as parcelas atendem à FMP de {fmp:.4f} ha."})
+                alertas.append({"nivel": "VERDE", "regra": "Soma de Áreas", "detalhe": f"Soma das parcelas ({soma:.4f} ha) fecha 100%."})
+            abaixo = [g.get("nome", "Parcela") for g in glebas if fmp > 0 and float(g.get("area_ha") or 0) < fmp]
+            if abaixo:
+                alertas.append({"nivel": "VERMELHO", "regra": "Fração Mínima de Parcelamento (FMP)", "detalhe": f"Parcela(s) abaixo da FMP ({fmp:.4f} ha): {', '.join(abaixo)}."})
+            elif fmp > 0:
+                alertas.append({"nivel": "VERDE", "regra": "FMP", "detalhe": f"Todas as parcelas atendem à FMP ({fmp:.4f} ha)."})
 
-    # 5. Confrontantes (grafia, matrícula, falecido sem espólio, PJ sem representante)
     confs = [c for c in d.get("confrontantes", []) if (c.get("nome") or "").strip()]
-    if regra_rito.get("exige_confrontantes") and not confs:
-        alertas.append({"nivel": "VERMELHO", "regra": "Confrontantes", "detalhe": "Nenhum confrontante cadastrado para este rito."})
-    mem_txt = (d.get("memorial_texto") or "").lower()
-    for c in confs:
-        nome = c.get("nome", "").strip()
-        if not c.get("matricula"):
-            alertas.append({"nivel": "AMARELO", "regra": f"Matrícula de Confrontante ({nome})", "detalhe": "Matrícula/Transcrição/Posse do confrontante não preenchida."})
-        if c.get("falecido") or "espólio" in nome.lower() or "espolio" in nome.lower():
-            if not c.get("representante_ou_inventariante"):
-                alertas.append({"nivel": "VERMELHO", "regra": f"Confrontante Espólio ({nome})", "detalhe": "Confrontante falecido/espólio sem indicação de Inventariante (exige termo de inventariante + certidão de óbito)."})
-        if c.get("tipo") == "PJ" and not c.get("representante_ou_inventariante"):
-            alertas.append({"nivel": "VERMELHO", "regra": f"Confrontante PJ ({nome})", "detalhe": "Pessoa Jurídica sem representante legal informado (juntar contrato social/ata)."})
-        if mem_txt and nome.lower() not in mem_txt:
-            alertas.append({"nivel": "AMARELO", "regra": f"Grafia no Memorial ({nome})", "detalhe": f"O nome exato '{nome}' não foi encontrado no texto do memorial descritivo — confira se há divergência de grafia."})
+    confs_privados = [c for c in confs if not c.get("imovel_publico_ou_estrada")]
+    if regra.get("exige_confrontantes") and not confs_privados:
+        alertas.append({"nivel": "VERMELHO", "regra": "Confrontantes", "detalhe": "Nenhum confrontante particular identificado/cadastrado."})
 
-    # 6. Cadastros e ART
-    faltantes = []
-    for k, lbl in [("art_numero", "ART"), ("incra_sncr", "CCIR/SNCR"), ("car_numero", "CAR"), ("comarca_uf", "Comarca do CRI"), ("matricula_numero", "Matrícula")]:
-        if not (d.get(k) or "").strip():
-            faltantes.append(lbl)
-    if faltantes:
-        alertas.append({"nivel": "AMARELO", "regra": "Campos Cadastrais Pendentes", "detalhe": f"Preencher antes do protocolo: {', '.join(faltantes)}."})
+    mem_low = (d.get("memorial_texto") or "").lower()
+    for c in confs_privados:
+        nm = c.get("nome", "").strip()
+        if not (c.get("doc") or "").strip():
+            alertas.append({"nivel": "AMARELO", "regra": f"Documentos de {nm}", "detalhe": "CPF/CNPJ ainda não extraído — anexe os documentos na aba deste confrontante."})
+        if not (c.get("matricula") or "").strip():
+            alertas.append({"nivel": "AMARELO", "regra": f"Matrícula de {nm}", "detalhe": "Matrícula/Posse do confrontante não informada."})
+        if (c.get("falecido") or "espólio" in nm.lower() or "espolio" in nm.lower()) and not (c.get("representante_ou_inventariante") or "").strip():
+            alertas.append({"nivel": "VERMELHO", "regra": f"Espólio ({nm})", "detalhe": "Confrontante falecido/espólio sem Inventariante informado."})
+        if c.get("tipo") == "PJ" and not (c.get("representante_ou_inventariante") or "").strip():
+            alertas.append({"nivel": "VERMELHO", "regra": f"Pessoa Jurídica ({nm})", "detalhe": "Confrontante PJ sem representante legal."})
+        if mem_low and nm.lower() not in mem_low:
+            alertas.append({"nivel": "AMARELO", "regra": f"Grafia no Memorial ({nm})", "detalhe": "Nome não aparece com a mesma grafia no texto do memorial."})
+
+    falt = [lbl for k, lbl in [("art_numero", "ART"), ("comarca_uf", "Comarca"), ("matricula_numero", "Matrícula")] if not (d.get(k) or "").strip()]
+    if falt:
+        alertas.append({"nivel": "AMARELO", "regra": "Campos Essenciais", "detalhe": f"Preencher: {', '.join(falt)}."})
     else:
-        alertas.append({"nivel": "VERDE", "regra": "Cadastros e ART", "detalhe": "ART, CCIR/SNCR, CAR, Matrícula e Comarca preenchidos."})
+        alertas.append({"nivel": "VERDE", "regra": "Dados de Protocolo", "detalhe": "ART, Matrícula e Comarca preenchidos."})
 
     return alertas
 
 
 # ==============================================================================
-# GERADOR DE DOCUMENTOS NO TIMBRADO OFICIAL FACILLYTE (.DOCX + .PDF)
+# GERADOR DE PEÇAS NO TIMBRADO OFICIAL DE 3 COLUNAS (.DOCX + .PDF)
 # ==============================================================================
 def cm_to_dxa(cm_val: float) -> int:
     return int(round(cm_val * 566.929))
@@ -411,7 +784,7 @@ def set_fixed_widths(table, widths_cm):
             tcPr.append(parse_xml(f'<w:tcW {nsdecls("w")} w:w="{cm_to_dxa(w)}" w:type="dxa"/>'))
 
 
-def set_cell_mar(cell, top=55, bottom=55, left=80, right=80):
+def set_cell_mar(cell, top=50, bottom=50, left=75, right=75):
     tcPr = cell._tc.get_or_add_tcPr()
     tcMar = OxmlElement("w:tcMar")
     for m, v in [("top", top), ("bottom", bottom), ("left", left), ("right", right)]:
@@ -434,7 +807,6 @@ def novo_doc_timbrado():
         sec.header_distance = Cm(0.8)
         sec.footer_distance = Cm(0.85)
 
-        # Cabeçalho 3 colunas (modelo oficial Facillyte Engenharia LTDA)
         hdr = sec.header
         hdr.is_linked_to_previous = False
         hdr.paragraphs[0].paragraph_format.line_spacing = Pt(1)
@@ -463,8 +835,7 @@ def novo_doc_timbrado():
             p0.add_run().add_picture(LOGO_ENG, width=Cm(2.85))
         else:
             r = p0.add_run("FACILLYTE\nENGENHARIA")
-            r.font.bold = True
-            r.font.color.rgb = RGB_PRIMARY
+            r.font.bold, r.font.color.rgb = True, RGB_PRIMARY
 
         c1 = htbl.rows[0].cells[1]
         for idx, (txt, sz, bld, col) in enumerate([
@@ -478,10 +849,7 @@ def novo_doc_timbrado():
             pp.paragraph_format.space_before = Pt(0)
             pp.paragraph_format.space_after = Pt(1 if idx < 3 else 0)
             rr = pp.add_run(txt)
-            rr.font.name = "Calibri"
-            rr.font.size = Pt(sz)
-            rr.font.bold = bld
-            rr.font.color.rgb = col
+            rr.font.name, rr.font.size, rr.font.bold, rr.font.color.rgb = "Calibri", Pt(sz), bld, col
 
         p2 = htbl.rows[0].cells[2].paragraphs[0]
         p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -489,18 +857,14 @@ def novo_doc_timbrado():
             p2.add_run().add_picture(LOGO_TOPO, width=Cm(2.15))
         else:
             r = p2.add_run("FACILLYTE\nTOPOGRAFIA")
-            r.font.bold = True
-            r.font.color.rgb = RGB_ACCENT
+            r.font.bold, r.font.color.rgb = True, RGB_ACCENT
 
         p_acc = hdr.add_paragraph()
-        p_acc.paragraph_format.space_before = Pt(1)
-        p_acc.paragraph_format.space_after = Pt(3)
-        p_acc.paragraph_format.line_spacing = Pt(2)
+        p_acc.paragraph_format.space_before, p_acc.paragraph_format.space_after, p_acc.paragraph_format.line_spacing = Pt(1), Pt(3), Pt(2)
         p_acc._p.get_or_add_pPr().append(
             parse_xml(f'<w:pBdr {nsdecls("w")}><w:top w:val="single" w:sz="8" w:space="0" w:color="{HEX_ACCENT}"/></w:pBdr>')
         )
 
-        # Rodapé
         ftr = sec.footer
         ftr.is_linked_to_previous = False
         ftr.paragraphs[0].paragraph_format.line_spacing = Pt(1)
@@ -554,10 +918,7 @@ def add_p(doc, text, bold=False, center=False, size=11, color=RGB_SLATE, space_a
     p.paragraph_format.space_after = Pt(space_after)
     p.paragraph_format.line_spacing = 1.15
     r = p.add_run(text)
-    r.font.name = "Calibri"
-    r.font.size = Pt(size)
-    r.font.bold = bold
-    r.font.color.rgb = color
+    r.font.name, r.font.size, r.font.bold, r.font.color.rgb = "Calibri", Pt(size), bold, color
     return p
 
 
@@ -571,7 +932,7 @@ def add_assinatura(doc, nome, legenda):
 
 
 def qualificacao_proprietario(d: dict) -> str:
-    partes = [d.get("proprietario_nome", "[PROPRIETÁRIO]")]
+    partes = [d.get("proprietario_nome") or "[PROPRIETÁRIO]"]
     if d.get("proprietario_tipo") == "PJ":
         partes.append(f"pessoa jurídica inscrita no CNPJ nº {d.get('proprietario_doc', '')}")
         if d.get("representante_legal_ou_inventariante"):
@@ -604,81 +965,76 @@ def gerar_pacote_zip(d: dict, alertas: list[dict], gerar_pdf: bool = True) -> by
 
     docs_map = {}
 
-    # 1. Requerimento Principal
     doc_req = novo_doc_timbrado()
     add_p(doc_req, f"ILUSTRÍSSIMO(A) SENHOR(A) OFICIAL(A) DO CARTÓRIO DE REGISTRO DE IMÓVEIS DA COMARCA DE {comarca.upper()}", bold=True, justify=False, space_after=8)
     add_p(doc_req, f"REQUERIMENTO DE {rito.upper()}", bold=True, center=True, size=13, color=RGB_PRIMARY, space_after=3)
     add_p(doc_req, fundamento, center=True, size=10, color=RGB_MUTED, space_after=8)
     add_p(doc_req, f"{qual_prop}, juntamente com o Responsável Técnico MARCOS FRANCIEL FERNANDES DOS SANTOS, Engenheiro Civil, CREA-MG 248849/D, RNP 141908491-7/MG, INCRA YIDB, com escritório à Rua Ayrton Senna, 425, Vila Nova, Pai Pedro/MG, vêm requerer o processamento e averbação de {rito} no imóvel denominado {d.get('imovel_denominacao', '')}, Município de {mun}/MG, Matrícula nº {d.get('matricula_numero', '')}, Livro {d.get('livro_numero', '2')}, CNS {d.get('cartorio_cns', '')}, INCRA/SNCR {d.get('incra_sncr', '')}, CIB/NIRF {d.get('cib_nirf', '')}, CAR {d.get('car_numero', '')}, Certificação SIGEF {d.get('sigef_codigo', 'N/A')}.")
-    add_p(doc_req, f"Área Registrada: {d.get('area_matricula_ha', 0):.4f} ha | Área Apurada/Memorial: {d.get('area_memorial_ha', 0):.4f} ha | Perímetro: {d.get('perimetro_m', 0):.3f} m | Valor Real e de Mercado (Lei Est. 15.424/2004, Tabela 4): R$ {d.get('valor_mercado_num', '')} ({d.get('valor_mercado_extenso', '')}).", bold=True)
+    add_p(doc_req, f"Área Registrada: {float(d.get('area_matricula_ha') or 0):.4f} ha | Área Apurada/Memorial: {float(d.get('area_memorial_ha') or 0):.4f} ha | Perímetro: {float(d.get('perimetro_m') or 0):.3f} m | Valor Real e de Mercado (Lei Est. 15.424/2004, Tabela 4): R$ {d.get('valor_mercado_num', '')} ({d.get('valor_mercado_extenso', '')}).", bold=True)
     add_p(doc_req, "Os requerentes e o Responsável Técnico declaram, sob responsabilidade civil e criminal (art. 213, § 14, da Lei nº 6.015/1973), que o levantamento foi realizado in loco (Datum SIRGAS 2000), respeitando integralmente as divisas existentes, faixas de domínio público e os direitos de todos os confrontantes, inexistindo invasão ou ação judicial conexa.")
-    add_p(doc_req, f"Nestes termos, pede deferimento. {mun}/MG, {data_hoje}.", justify=False, space_after=10)
-    add_assinatura(doc_req, d.get("proprietario_nome", "[PROPRIETÁRIO]"), f"Requerente — CPF/CNPJ: {d.get('proprietario_doc', '')}")
+    add_p(doc_req, f"Nestes termos, pede deferimento. {mun}/MG, {data_hoje}.", justify=False, space_after=8)
+    add_assinatura(doc_req, d.get("proprietario_nome") or "[PROPRIETÁRIO]", f"Requerente — CPF/CNPJ: {d.get('proprietario_doc', '')}")
     if d.get("conjuge_nome"):
         add_assinatura(doc_req, d["conjuge_nome"], f"Cônjuge — CPF: {d.get('conjuge_cpf', '')}")
     add_assinatura(doc_req, "MARCOS FRANCIEL FERNANDES DOS SANTOS", rt_legenda)
     docs_map["01_Requerimento_CRI.docx"] = doc_req
 
-    # 2. Declarações Individuais de Anuência dos Confrontantes
-    for idx, c in enumerate(d.get("confrontantes", []), start=1):
-        if not (c.get("nome") or "").strip():
+    idx_c = 0
+    for c in d.get("confrontantes", []):
+        if not (c.get("nome") or "").strip() or c.get("imovel_publico_ou_estrada"):
             continue
+        idx_c += 1
         doc_c = novo_doc_timbrado()
         add_p(doc_c, "DECLARAÇÃO DE ANUÊNCIA E RECONHECIMENTO DE LIMITES (CONFRONTANTE)", bold=True, center=True, size=13, color=RGB_PRIMARY, space_after=3)
         add_p(doc_c, "Art. 213, II e § 10, da Lei nº 6.015/1973 • Arts. 891 e 898 do Provimento Conjunto nº 93/2020 (CGJ/MG)", center=True, size=10, color=RGB_MUTED, space_after=8)
         rep = f", neste ato representado(a) por {c['representante_ou_inventariante']}" if c.get("representante_ou_inventariante") else ""
         add_p(doc_c, f"Eu, {c['nome']}{rep}, {c.get('qualificacao', '')}, RG {c.get('rg', '')}, CPF/CNPJ {c.get('doc', '')}, residente/sediado(a) em {c.get('endereco', '')}, titular/ocupante do imóvel confrontante Matrícula/Posse {c.get('matricula', '')} (CNS {c.get('cns', '')}), DECLARO, sob as penas da lei (art. 299 do Código Penal), que concordo integralmente com as medidas perimetrais, coordenadas, azimutes e divisas comuns constantes da planta e memorial descritivo do imóvel {d.get('imovel_denominacao', '')}, Matrícula nº {d.get('matricula_numero', '')} (CRI {comarca}), de propriedade de {d.get('proprietario_nome', '')}, levantado pelo Eng. Civil Marcos Franciel Fernandes dos Santos (CREA-MG 248849/D, INCRA YIDB, ART nº {d.get('art_numero', '')}).")
         add_p(doc_c, "Declaro ciência de que, nos termos do art. 213, § 10, da Lei nº 6.015/1973 e art. 898 do Provimento Conjunto nº 93/2020/CGJ-MG, minha anuência supre a participação do cônjuge e de eventuais outros condôminos titulares do imóvel limítrofe.")
-        add_p(doc_c, f"{mun}/MG, {data_hoje}.", justify=False, space_after=10)
+        add_p(doc_c, f"{mun}/MG, {data_hoje}.", justify=False, space_after=8)
         safe_name = re.sub(r"[^A-Za-z0-9]+", "_", c["nome"])[:30]
         add_assinatura(doc_c, c.get("representante_ou_inventariante") or c["nome"], f"Confrontante ({c['nome']}) — CPF/CNPJ: {c.get('doc', '')}")
-        docs_map[f"02_Anuencia_{idx:02d}_{safe_name}.docx"] = doc_c
+        docs_map[f"02_Anuencia_{idx_c:02d}_{safe_name}.docx"] = doc_c
 
-    # 3. Declaração Conjunta do Proprietário e RT
     doc_dc = novo_doc_timbrado()
     add_p(doc_dc, "DECLARAÇÃO CONJUNTA DO(S) PROPRIETÁRIO(S) E DO RESPONSÁVEL TÉCNICO", bold=True, center=True, size=13, color=RGB_PRIMARY, space_after=3)
     add_p(doc_dc, "Art. 213, § 14, da Lei nº 6.015/1973 • Provimento Conjunto nº 93/2020 (CGJ/MG)", center=True, size=10, color=RGB_MUTED, space_after=8)
     add_p(doc_dc, f"Referência: Imóvel {d.get('imovel_denominacao', '')}, {mun}/MG, Matrícula nº {d.get('matricula_numero', '')}, CRI de {comarca}.", bold=True)
     add_p(doc_dc, f"Responsável Técnico: Eu, MARCOS FRANCIEL FERNANDES DOS SANTOS, Engenheiro Civil, CREA-MG 248849/D, RNP 141908491-7/MG, INCRA YIDB (ART nº {d.get('art_numero', '')}), ATESTO sob as penas da lei que efetuei pessoalmente, in loco, o levantamento georreferenciado (SIRGAS 2000), sendo exatos os dados da planta e memorial descritivo e plenamente respeitadas as divisas particulares e faixas de domínio público.")
     add_p(doc_dc, f"Proprietário(s): {qual_prop}, ATESTAMOS sob as penas da lei serem verdadeiras todas as informações apresentadas, sem alteração de divisas nem invasão de áreas vizinhas, com plena ciência do art. 213, § 14, da Lei nº 6.015/1973 e do art. 299 do Código Penal.")
-    add_p(doc_dc, f"{mun}/MG, {data_hoje}.", justify=False, space_after=10)
+    add_p(doc_dc, f"{mun}/MG, {data_hoje}.", justify=False, space_after=8)
     add_assinatura(doc_dc, "MARCOS FRANCIEL FERNANDES DOS SANTOS", rt_legenda)
-    add_assinatura(doc_dc, d.get("proprietario_nome", "[PROPRIETÁRIO]"), f"Proprietário(a) — CPF/CNPJ: {d.get('proprietario_doc', '')}")
+    add_assinatura(doc_dc, d.get("proprietario_nome") or "[PROPRIETÁRIO]", f"Proprietário(a) — CPF/CNPJ: {d.get('proprietario_doc', '')}")
     docs_map["03_Declaracao_Conjunta_Proprietario_RT.docx"] = doc_dc
 
-    # 4. Declaração de Valor Real e de Mercado (MG)
     doc_vm = novo_doc_timbrado()
     add_p(doc_vm, f"ILUSTRÍSSIMO(A) SENHOR(A) OFICIAL(A) DO CARTÓRIO DE REGISTRO DE IMÓVEIS DA COMARCA DE {comarca.upper()}", bold=True, justify=False, space_after=8)
     add_p(doc_vm, "DECLARAÇÃO DE VALOR REAL E DE MERCADO DO IMÓVEL", bold=True, center=True, size=13, color=RGB_PRIMARY, space_after=3)
     add_p(doc_vm, "Art. 10, § 3º, XVI, Lei Estadual nº 15.424/2004 (Tabela 4) • Arts. 134 a 138 do Prov. Conj. nº 93/2020 (CGJ/MG)", center=True, size=10, color=RGB_MUTED, space_after=8)
     add_p(doc_vm, f"{qual_prop}, proprietário(a) do imóvel {d.get('imovel_denominacao', '')}, Matrícula nº {d.get('matricula_numero', '')}, CRI de {comarca}, requerente de {rito}, em atendimento aos arts. 134 a 138 do Provimento Conjunto nº 93/2020/CGJ-MG e ao art. 10, § 3º, XVI, da Lei Estadual nº 15.424/2004 (alterada pelas Leis nº 25.125/2024 e nº 25.367/2025), DECLARA, sob responsabilidade civil e penal, que o valor real e de mercado do imóvel é de R$ {d.get('valor_mercado_num', '')} ({d.get('valor_mercado_extenso', '')}).")
     add_p(doc_vm, "Declara ciência de que o valor destina-se ao recolhimento de emolumentos e TFJ, sujeito a arbitramento judicial se manifestamente inferior ao real (arts. 134 a 138 do Prov. Conj. 93/2020), bem como plena ciência do art. 299 do Código Penal Brasileiro.")
-    add_p(doc_vm, f"{mun}/MG, {data_hoje}.", justify=False, space_after=10)
-    add_assinatura(doc_vm, d.get("proprietario_nome", "[PROPRIETÁRIO]"), f"Proprietário(a) — CPF/CNPJ: {d.get('proprietario_doc', '')}")
+    add_p(doc_vm, f"{mun}/MG, {data_hoje}.", justify=False, space_after=8)
+    add_assinatura(doc_vm, d.get("proprietario_nome") or "[PROPRIETÁRIO]", f"Proprietário(a) — CPF/CNPJ: {d.get('proprietario_doc', '')}")
     docs_map["04_Declaracao_Valor_Real_Mercado_MG.docx"] = doc_vm
 
-    # 5. Memorial Descritivo Padronizado
     doc_mem = novo_doc_timbrado()
     add_p(doc_mem, "MEMORIAL DESCRITIVO", bold=True, center=True, size=13.5, color=RGB_PRIMARY, space_after=4)
     add_p(doc_mem, f"Imóvel: {d.get('imovel_denominacao', '')} • Matrícula: {d.get('matricula_numero', '')} • Município: {mun}/MG • Comarca: {comarca} (CNS {d.get('cartorio_cns', '')})", bold=True, justify=False, space_after=4)
-    add_p(doc_mem, f"Proprietário(a): {d.get('proprietario_nome', '')} ({d.get('proprietario_doc', '')}) • INCRA: {d.get('incra_sncr', '')} • Área: {d.get('area_memorial_ha', 0):.4f} ha • Perímetro: {d.get('perimetro_m', 0):.3f} m • Datum: SIRGAS 2000", justify=False, space_after=8)
-    add_p(doc_mem, d.get("memorial_texto") or "[Inserir/colar descrição completa do perímetro com coordenadas, azimutes, distâncias e confrontantes]")
+    add_p(doc_mem, f"Proprietário(a): {d.get('proprietario_nome', '')} ({d.get('proprietario_doc', '')}) • INCRA: {d.get('incra_sncr', '')} • Área: {float(d.get('area_memorial_ha') or 0):.4f} ha • Perímetro: {float(d.get('perimetro_m') or 0):.3f} m • Datum: SIRGAS 2000", justify=False, space_after=8)
+    add_p(doc_mem, d.get("memorial_texto") or "[Inserir descrição completa do perímetro]")
     add_p(doc_mem, f"{mun}/MG, {data_hoje}.", justify=False, space_after=8)
     add_assinatura(doc_mem, "MARCOS FRANCIEL FERNANDES DOS SANTOS", rt_legenda)
-    add_assinatura(doc_mem, d.get("proprietario_nome", "[PROPRIETÁRIO]"), f"Proprietário(a) — CPF/CNPJ: {d.get('proprietario_doc', '')}")
+    add_assinatura(doc_mem, d.get("proprietario_nome") or "[PROPRIETÁRIO]", f"Proprietário(a) — CPF/CNPJ: {d.get('proprietario_doc', '')}")
     docs_map["05_Memorial_Descritivo_Timbrado.docx"] = doc_mem
 
-    # 6. Checklist Final Anti-Devolutiva + Resultado da Auditoria
     doc_chk = novo_doc_timbrado()
-    add_p(doc_chk, "CHECKLIST FINAL E RELATÓRIO ANTI-DEVOLUTIVA (MG)", bold=True, center=True, size=13, color=RGB_PRIMARY, space_after=6)
-    add_p(doc_chk, f"Processo: {rito} — {d.get('imovel_denominacao', '')} (Matrícula {d.get('matricula_numero', '')} — {comarca})", bold=True, justify=False)
+    add_p(doc_chk, "CHECKLIST FINAL E AUDITORIA ANTI-DEVOLUTIVA (MG)", bold=True, center=True, size=13, color=RGB_PRIMARY, space_after=6)
+    add_p(doc_chk, f"Projeto: {d.get('nome_projeto', '')} | Rito: {rito} | Comarca: {comarca}", bold=True, justify=False)
     for a in alertas:
         ico = {"VERDE": "[OK]", "AMARELO": "[ATENÇÃO]", "VERMELHO": "[BLOQUEIO]"}.get(a["nivel"], "")
         add_p(doc_chk, f"{ico} {a['regra']}: {a['detalhe']}", justify=False, space_after=4)
-    add_p(doc_chk, "Conferência Física/Digital Pré-Protocolo: [ ] ART quitada  [ ] CCIR quitado  [ ] CND ITR  [ ] Recibo CAR  [ ] Planta e Memorial A4  [ ] Firmas reconhecidas ou PDF/A (Prov. 149/2023 CNJ).", bold=True, justify=False, space_after=6)
+    add_p(doc_chk, "Conferência Pré-Protocolo: [ ] ART quitada  [ ] CCIR quitado  [ ] CND ITR  [ ] Recibo CAR  [ ] Planta e Memorial A4  [ ] Firmas reconhecidas ou PDF/A (Prov. 149/2023 CNJ).", bold=True, justify=False, space_after=6)
     docs_map["06_Checklist_Auditoria_AntiDevolutiva.docx"] = doc_chk
 
-    # Empacotar ZIP (DOCX + PDF opcional se LibreOffice instalado)
     zip_buf = io.BytesIO()
     with tempfile.TemporaryDirectory() as tmpdir:
         with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -703,175 +1059,479 @@ def gerar_pacote_zip(d: dict, alertas: list[dict], gerar_pdf: bool = True) -> by
 
 
 # ==============================================================================
-# INTERFACE STREAMLIT (4 ETAPAS LINEARES)
+# INTERFACE PRINCIPAL (CORES FACILLYTE + FLUXO INTUITIVO POR PROJETO)
 # ==============================================================================
 init_db()
+injetar_tema_facillyte()
 
+if "projeto" not in st.session_state:
+    st.session_state["projeto"] = None
+if "etapa" not in st.session_state:
+    st.session_state["etapa"] = 1
+
+# ── BARRA LATERAL INSTITUCIONAL ──
 with st.sidebar:
-    if os.path.exists(LOGO_TOPO):
-        st.image(LOGO_TOPO, width=130)
-    st.title("Facillyte Docs v2")
-    st.caption("Funcionário Virtual Cartorial — MG")
-    api_key = st.secrets.get("GEMINI_API_KEY", "") if hasattr(st, "secrets") else ""
-    api_key_input = st.text_input("Chave API Gemini (se não estiver nos Secrets)", value=api_key, type="password")
+    st.markdown("### 📐 FACILLYTE DOCS")
+    st.caption("Funcionário Virtual Cartorial • MG")
+
+    if st.button("➕ Criar Novo Projeto", use_container_width=True, type="primary"):
+        st.session_state["projeto"] = None
+        st.session_state["etapa"] = 1
+        st.rerun()
+
     st.divider()
-    st.subheader("Histórico de Processos (SQLite)")
-    hist = listar_processos()
-    if hist:
-        opcoes = {f"#{r[0]} • {r[3]} ({r[5]}) — {r[1]}": r[7] for r in hist}
-        sel = st.selectbox("Carregar processo salvo", ["(Novo processo)"] + list(opcoes.keys()))
-        if sel != "(Novo processo)" and st.button("Carregar dados"):
-            st.session_state["dados"] = json.loads(opcoes[sel])
-            st.success("Processo carregado!")
+    st.markdown("**📁 Projetos Salvos**")
+    projetos = listar_projetos()
+    if projetos:
+        for pid, pnome, prito, patu, pjson in projetos:
+            c_btn, c_del = st.columns([5, 1])
+            ico = RITOS_MG.get(prito, {}).get("icone", "📄")
+            if c_btn.button(f"{ico} {pnome}", key=f"open_{pid}", use_container_width=True, help=f"{prito} • {patu}"):
+                st.session_state["projeto"] = json.loads(pjson)
+                st.session_state["etapa"] = 2 if st.session_state["projeto"].get("analise_base_feita") else 1
+                st.rerun()
+            if c_del.button("🗑️", key=f"del_{pid}", help="Excluir projeto"):
+                excluir_projeto(pid)
+                if st.session_state["projeto"] and st.session_state["projeto"].get("projeto_id") == pid:
+                    st.session_state["projeto"] = None
+                st.rerun()
     else:
-        st.caption("Nenhum processo salvo ainda.")
+        st.caption("Seus projetos aparecerão aqui.")
 
-if "dados" not in st.session_state:
-    st.session_state["dados"] = {
-        "rito": list(RITOS_MG.keys())[0],
-        "proprietario_tipo": "PF",
-        "proprietario_nac": "brasileiro(a)",
-        "livro_numero": "2",
-        "fmp_municipio_ha": 3.0,
-        "glebas": [{"nome": "Gleba 01", "area_ha": 0.0, "perimetro_m": 0.0, "sigef": "", "valor_rs": ""}],
-        "confrontantes": [{"nome": "", "tipo": "PF", "doc": "", "rg": "", "qualificacao": "", "endereco": "", "matricula": "", "cns": "", "representante_ou_inventariante": "", "falecido": False}],
-    }
+    st.divider()
+    secret_key = ""
+    try:
+        secret_key = st.secrets.get("GEMINI_API_KEY", "")
+    except Exception:
+        secret_key = ""
+    api_key = st.text_input("🔑 Chave API Gemini", value=secret_key, type="password", help="Chave AIza... do Google AI Studio.")
 
-dados = st.session_state["dados"]
 
-st.header("📐 Funcionário Virtual — Peças Técnicas Cartoriais (MG)")
-tab1, tab2, tab3, tab4 = st.tabs([
-    "1️⃣ Ingestão Multimodal",
-    "2️⃣ Escolha do Rito & Revisão",
-    "3️⃣ Auditoria Anti-Devolutiva",
-    "4️⃣ Gerar Pacote no Timbrado (.zip)",
-])
-
-# ── ETAPA 1 ──
-with tab1:
-    st.subheader("Envie todos os documentos brutos do cliente")
-    arquivos = st.file_uploader(
-        "PDFs, fotos/imagens (RG, CPF, certidões, matrículas, CCIR, ITR, CAR), Word (.docx) e planilhas SIGEF (.xlsx / .ods)",
-        type=["pdf", "png", "jpg", "jpeg", "webp", "docx", "xlsx", "ods", "txt"],
-        accept_multiple_files=True,
+# ── TELA INICIAL: CRIAR OU ABRIR PROJETO ──
+if st.session_state["projeto"] is None:
+    render_banner(
+        "FACILLYTE ENGENHARIA & TOPOGRAFIA",
+        "Funcionário Virtual de Peças Técnicas Cartoriais — Minas Gerais",
+        "Provimento Conjunto nº 93/2020 • Lei nº 6.015/73 • Lei Est. nº 15.424/2004",
     )
-    texto_livre = st.text_area(
-        "Texto livre (memorial do TopoCAD/AutoCAD, anotações ou dados colados do WhatsApp do cliente)",
-        height=160,
-    )
-    if st.button("🤖 Extrair dados automaticamente com IA", type="primary"):
-        if not api_key_input:
-            st.error("Informe a chave GEMINI_API_KEY na barra lateral ou nos Secrets do Streamlit Cloud.")
-        elif not arquivos and not texto_livre.strip():
-            st.warning("Envie ao menos um arquivo ou cole um texto para extrair.")
-        else:
-            with st.spinner("Lendo documentos, planilhas SIGEF e imagens..."):
-                try:
-                    extraido = extrair_com_gemini(api_key_input, arquivos, texto_livre)
-                    extraido["rito"] = dados.get("rito", list(RITOS_MG.keys())[0])
-                    st.session_state["dados"] = extraido
-                    st.success("Extração concluída! Avance para a aba 2 para revisar.")
+
+    col_new, col_rec = st.columns([1.35, 1])
+    with col_new:
+        st.markdown(
+            '<div class="fac-card fac-card-green"><h4>🚀 Iniciar Novo Projeto</h4>'
+            '<p>Dê um nome ao processo e escolha o serviço. O sistema já monta automaticamente as caixas de documentos exigidos pelo cartório.</p></div>',
+            unsafe_allow_html=True,
+        )
+        with st.form("form_novo_projeto"):
+            nome_proj = st.text_input("Nome do Projeto", placeholder="Ex.: Fazenda Sonho Meu — Matrícula 6.724")
+            rito_sel = st.selectbox(
+                "Tipo de Serviço (Rito em MG)",
+                list(RITOS_MG.keys()),
+                format_func=lambda k: f"{RITOS_MG[k]['icone']} {k}",
+            )
+            st.caption(f"**Base legal:** {RITOS_MG[rito_sel]['fundamento']}")
+            if st.form_submit_button("Criar Projeto e Começar ➡️", type="primary", use_container_width=True):
+                proj = novo_projeto_vazio(nome=nome_proj.strip() or f"Projeto {datetime.now().strftime('%d/%m %H:%M')}", rito=rito_sel)
+                salvar_projeto(proj)
+                st.session_state["projeto"] = proj
+                st.session_state["etapa"] = 1
+                st.toast("Projeto criado com sucesso!", icon="✅")
+                st.rerun()
+
+    with col_rec:
+        st.markdown(
+            '<div class="fac-card"><h4>⚡ Como Funciona (4 Passos Simples)</h4>'
+            '<p><b>1.</b> Envie docs do proprietário, imóvel, planta e memorial (AutoCAD/TopoCAD).<br>'
+            '<b>2.</b> O sistema reconhece os confrontantes e abre uma aba para cada um.<br>'
+            '<b>3.</b> Auditoria automática aponta erros antes do cartório.<br>'
+            '<b>4.</b> Baixe tudo pronto no timbrado oficial (.docx + .pdf).</p></div>',
+            unsafe_allow_html=True,
+        )
+        if projetos:
+            st.markdown("**📂 Continuar Projeto Recente:**")
+            for pid, pnome, prito, patu, pjson in projetos[:4]:
+                if st.button(f"{RITOS_MG.get(prito, {}).get('icone', '📄')} {pnome} ({patu})", key=f"home_open_{pid}", use_container_width=True):
+                    st.session_state["projeto"] = json.loads(pjson)
+                    st.session_state["etapa"] = 2 if st.session_state["projeto"].get("analise_base_feita") else 1
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Erro na extração: {e}")
+    st.stop()
 
-# ── ETAPA 2 ──
-with tab2:
-    st.subheader("Rito Cartorial (Minas Gerais) e Ficha Estruturada")
-    dados["rito"] = st.selectbox("Selecione o Rito (MG)", list(RITOS_MG.keys()), index=list(RITOS_MG.keys()).index(dados.get("rito", list(RITOS_MG.keys())[0])))
-    st.info(f"**Base Legal Aplicada:** {RITOS_MG[dados['rito']]['fundamento']}")
 
+# ── PROJETO ATIVO: CABEÇALHO + PROGRESSO VISUAL ──
+proj = st.session_state["projeto"]
+rito_info = RITOS_MG[proj["rito"]]
+
+render_banner(
+    f"📂 {proj['nome_projeto']}",
+    f"{rito_info['icone']} {proj['rito']} — Comarca: {proj.get('comarca_uf') or 'A definir'}",
+    f"Passo {st.session_state['etapa']} de 4",
+)
+st.progress(st.session_state["etapa"] / 4.0)
+
+etapas_labels = [
+    "1️⃣ Documentos, Planta e Memorial",
+    f"2️⃣ Confrontantes ({len(proj.get('confrontantes', []))})",
+    "3️⃣ Revisão & Auditoria MG",
+    "4️⃣ Baixar Peças Timbradas",
+]
+cols_nav = st.columns(4)
+for idx_e, lbl in enumerate(etapas_labels, start=1):
+    tipo_btn = "primary" if st.session_state["etapa"] == idx_e else "secondary"
+    if cols_nav[idx_e - 1].button(lbl, key=f"nav_{idx_e}", use_container_width=True, type=tipo_btn):
+        st.session_state["etapa"] = idx_e
+        st.rerun()
+
+st.write("")
+
+# ==============================================================================
+# PASSO 1: UPLOAD ORGANIZADO POR CATEGORIA + PLANTA E MEMORIAL (AUTOCAD/TOPOCAD)
+# ==============================================================================
+if st.session_state["etapa"] == 1:
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(
+            f'<div class="fac-card"><h4>👤 1. Documentos do Proprietário</h4>'
+            f'<p>{rito_info["docs_proprietario"]}</p></div>',
+            unsafe_allow_html=True,
+        )
+        arq_prop = st.file_uploader(
+            "Arraste ou selecione os documentos do proprietário",
+            type=["pdf", "png", "jpg", "jpeg", "webp", "docx"],
+            accept_multiple_files=True,
+            key="up_prop",
+            label_visibility="collapsed",
+        )
+        if arq_prop:
+            st.success(f"✅ {len(arq_prop)} arquivo(s) do proprietário anexado(s).")
+
+        st.markdown(
+            '<div class="fac-card fac-card-green"><h4>🗺️ 3. Planta e Memorial Descritivo (AutoCAD / TopoCAD 2000 / SIGEF)</h4>'
+            '<p>Envie o memorial (.rtf, .docx, .pdf, .txt) e a planta — o sistema lerá e abrirá automaticamente uma aba para cada confrontante encontrado.</p></div>',
+            unsafe_allow_html=True,
+        )
+        arq_planta_mem = st.file_uploader(
+            "Arraste ou selecione a planta e o memorial",
+            type=["pdf", "rtf", "docx", "txt", "png", "jpg", "jpeg", "xlsx", "ods"],
+            accept_multiple_files=True,
+            key="up_planta",
+            label_visibility="collapsed",
+        )
+        if arq_planta_mem:
+            st.success(f"✅ {len(arq_planta_mem)} arquivo(s) de planta/memorial anexado(s).")
+
+    with c2:
+        st.markdown(
+            f'<div class="fac-card"><h4>🏡 2. Documentos do Imóvel e Cadastros</h4>'
+            f'<p>{rito_info["docs_imovel"]}</p></div>',
+            unsafe_allow_html=True,
+        )
+        arq_imovel = st.file_uploader(
+            "Arraste ou selecione matrícula, CCIR, ITR, CAR, SIGEF e ART",
+            type=["pdf", "png", "jpg", "jpeg", "webp", "docx", "xlsx", "ods"],
+            accept_multiple_files=True,
+            key="up_imovel",
+            label_visibility="collapsed",
+        )
+        if arq_imovel:
+            st.success(f"✅ {len(arq_imovel)} arquivo(s) do imóvel anexado(s).")
+
+        st.markdown(
+            '<div class="fac-card"><h4>📎 4. Complementares e Observações (Opcional)</h4>'
+            '<p>Envie documentos extras ou cole abaixo o valor de mercado / dados enviados pelo cliente no WhatsApp.</p></div>',
+            unsafe_allow_html=True,
+        )
+        arq_comp = st.file_uploader(
+            "Outros arquivos complementares",
+            type=["pdf", "png", "jpg", "jpeg", "webp", "docx", "txt"],
+            accept_multiple_files=True,
+            key="up_comp",
+            label_visibility="collapsed",
+        )
+
+    texto_obs = st.text_area(
+        "📝 Texto livre (memorial do TopoCAD/AutoCAD, valor de mercado ou recados do WhatsApp)",
+        value=proj.get("memorial_texto", ""),
+        height=110,
+    )
+
+    col_go1, col_go2 = st.columns([3, 1])
+    with col_go1:
+        if st.button("🤖 Ler Tudo e Identificar Confrontantes Automaticamente", type="primary", use_container_width=True):
+            if not api_key:
+                st.error("Informe a chave GEMINI_API_KEY na barra lateral (ou nos Secrets do Streamlit).")
+            elif not (arq_prop or arq_imovel or arq_planta_mem or arq_comp or texto_obs.strip()):
+                st.warning("Anexe pelo menos um documento ou cole o memorial antes de iniciar.")
+            else:
+                with st.spinner("Analisando documentos, planta e memorial para abrir as abas dos confrontantes..."):
+                    try:
+                        ext = extrair_base_e_confrontantes(api_key, proj["rito"], arq_prop, arq_imovel, arq_planta_mem, arq_comp, texto_obs)
+                        ext["projeto_id"] = proj["projeto_id"]
+                        ext["nome_projeto"] = proj["nome_projeto"]
+                        ext["rito"] = proj["rito"]
+                        ext["analise_base_feita"] = True
+                        if not ext.get("glebas"):
+                            ext["glebas"] = [{"nome": "Gleba 01", "area_ha": 0.0, "perimetro_m": 0.0, "sigef": "", "valor_rs": ""}]
+                        salvar_projeto(ext)
+                        st.session_state["projeto"] = ext
+                        st.session_state["etapa"] = 2
+                        st.toast(f"Pronto! {len(ext.get('confrontantes', []))} confrontante(s) identificado(s).", icon="🎉")
+                        st.rerun()
+                    except Exception as e:
+                        err_msg = str(e)
+                        if "API_KEY_INVALID" in err_msg or "API key not valid" in err_msg or "400" in err_msg:
+                            st.error("Sua chave GEMINI_API_KEY foi recusada pelo Gemini. Gere uma chave padrão (começando com 'AIza...') em aistudio.google.com/apikey e salve na barra lateral ou nos Secrets.")
+                        else:
+                            st.error(f"Erro durante a leitura: {err_msg}")
+    with col_go2:
+        if st.button("Ir para Confrontantes ➡️", use_container_width=True):
+            st.session_state["etapa"] = 2
+            st.rerun()
+
+# ==============================================================================
+# PASSO 2: ABAS INDIVIDUAIS PARA CADA CONFRONTANTE RECONHECIDO
+# ==============================================================================
+elif st.session_state["etapa"] == 2:
+    confs = proj.get("confrontantes", [])
+
+    c_top1, c_top2 = st.columns([3, 1])
+    with c_top1:
+        if confs:
+            st.markdown(
+                f'<div class="fac-card fac-card-green"><h4>👥 {len(confs)} Confrontante(s) Identificado(s) na Planta e Memorial</h4>'
+                '<p>Clique em cada aba abaixo para anexar os documentos daquele confrontante. O ícone ✅ indica confrontante já completo.</p></div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="fac-card"><h4>👥 Nenhum confrontante listado ainda</h4>'
+                '<p>Volte ao Passo 1 para enviar a planta e o memorial, ou clique em <b>+ Adicionar Confrontante</b> ao lado.</p></div>',
+                unsafe_allow_html=True,
+            )
+    with c_top2:
+        st.write("")
+        if st.button("➕ Adicionar Confrontante", use_container_width=True, type="primary"):
+            confs.append({
+                "nome": f"Confrontante {len(confs) + 1}",
+                "tipo": "PF",
+                "doc": "",
+                "rg": "",
+                "qualificacao": "",
+                "endereco": "",
+                "matricula": "",
+                "cns": "",
+                "representante_ou_inventariante": "",
+                "falecido": False,
+                "imovel_publico_ou_estrada": False,
+            })
+            proj["confrontantes"] = confs
+            salvar_projeto(proj)
+            st.rerun()
+
+    if confs:
+        nomes_abas = []
+        for i, c in enumerate(confs):
+            if c.get("imovel_publico_ou_estrada"):
+                status_ico = "🛣️"
+            elif (c.get("doc") or "").strip() and (c.get("matricula") or "").strip():
+                status_ico = "✅"
+            else:
+                status_ico = "🟡"
+            nomes_abas.append(f"{status_ico} {i + 1}. {(c.get('nome') or 'Sem nome')[:24]}")
+
+        abas = st.tabs(nomes_abas)
+        for i, aba in enumerate(abas):
+            with aba:
+                c = confs[i]
+                col_up, col_form = st.columns([1, 1.35])
+                with col_up:
+                    st.markdown(
+                        f'<div class="fac-card fac-card-green"><h4>📎 Documentos — {c.get("nome") or f"Confrontante {i + 1}"}</h4>'
+                        f'<p>{rito_info["docs_confrontante"]}</p></div>',
+                        unsafe_allow_html=True,
+                    )
+                    arq_c = st.file_uploader(
+                        f"Docs de {c.get('nome') or f'Confrontante {i + 1}'}",
+                        type=["pdf", "png", "jpg", "jpeg", "webp", "docx", "txt"],
+                        accept_multiple_files=True,
+                        key=f"up_conf_{i}",
+                        label_visibility="collapsed",
+                    )
+                    txt_c = st.text_area(
+                        "Dados colados do WhatsApp deste confrontante (opcional)",
+                        height=85,
+                        key=f"txt_conf_{i}",
+                    )
+                    if st.button(f"🤖 Extrair dados de {c.get('nome') or f'Confrontante {i + 1}'}", key=f"btn_ext_conf_{i}", type="primary", use_container_width=True):
+                        if not api_key:
+                            st.error("Informe a chave GEMINI_API_KEY na barra lateral.")
+                        elif not arq_c and not txt_c.strip():
+                            st.warning("Anexe ao menos um documento ou cole os dados acima.")
+                        else:
+                            with st.spinner(f"Lendo documentos de {c.get('nome', 'confrontante')}..."):
+                                try:
+                                    novo_c = extrair_dados_confrontante(api_key, c, arq_c, txt_c)
+                                    for k, v in novo_c.items():
+                                        if v not in ("", None):
+                                            c[k] = v
+                                    confs[i] = c
+                                    proj["confrontantes"] = confs
+                                    salvar_projeto(proj)
+                                    st.toast("Dados do confrontante extraídos!", icon="✅")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Erro ao extrair: {e}")
+
+                    if st.button(f"🗑️ Remover Confrontante {i + 1}", key=f"del_conf_{i}", use_container_width=True):
+                        confs.pop(i)
+                        proj["confrontantes"] = confs
+                        salvar_projeto(proj)
+                        st.rerun()
+
+                with col_form:
+                    st.markdown('<div class="fac-card"><h4>📋 Ficha do Confrontante</h4><p>Revise ou complete os dados abaixo.</p></div>', unsafe_allow_html=True)
+                    c["nome"] = st.text_input("Nome / Razão Social / Espólio", value=c.get("nome", ""), key=f"cnome_{i}")
+                    cc1, cc2, cc3 = st.columns(3)
+                    tipos = ["PF", "PJ", "Espólio"]
+                    c["tipo"] = cc1.selectbox("Tipo", tipos, index=tipos.index(c.get("tipo", "PF")) if c.get("tipo") in tipos else 0, key=f"ctipo_{i}")
+                    c["falecido"] = cc2.checkbox("Falecido / Espólio", value=bool(c.get("falecido", False)), key=f"cfal_{i}")
+                    c["imovel_publico_ou_estrada"] = cc3.checkbox("Estrada / Rio / Público", value=bool(c.get("imovel_publico_ou_estrada", False)), key=f"cpub_{i}")
+                    cc4, cc5 = st.columns(2)
+                    c["doc"] = cc4.text_input("CPF / CNPJ", value=c.get("doc", ""), key=f"cdoc_{i}")
+                    c["rg"] = cc5.text_input("RG / Órgão", value=c.get("rg", ""), key=f"crg_{i}")
+                    c["qualificacao"] = st.text_input("Qualificação (nacionalidade, estado civil, profissão)", value=c.get("qualificacao", ""), key=f"cqual_{i}")
+                    c["endereco"] = st.text_input("Endereço Completo", value=c.get("endereco", ""), key=f"cend_{i}")
+                    cc6, cc7 = st.columns(2)
+                    c["matricula"] = cc6.text_input("Matrícula / Transcrição / Posse", value=c.get("matricula", ""), key=f"cmat_{i}")
+                    c["cns"] = cc7.text_input("CNS do Cartório", value=c.get("cns", ""), key=f"ccns_{i}")
+                    c["representante_ou_inventariante"] = st.text_input("Representante Legal / Inventariante (se PJ ou Espólio)", value=c.get("representante_ou_inventariante", ""), key=f"crep_{i}")
+                    confs[i] = c
+
+    proj["confrontantes"] = confs
+    st.write("")
+    c_prev, c_save, c_next = st.columns([1, 1, 2])
+    if c_prev.button("⬅️ Voltar ao Passo 1", use_container_width=True):
+        salvar_projeto(proj)
+        st.session_state["etapa"] = 1
+        st.rerun()
+    if c_save.button("💾 Salvar Alterações", use_container_width=True):
+        salvar_projeto(proj)
+        st.toast("Alterações salvas!", icon="💾")
+    if c_next.button("Avançar para Revisão e Auditoria ➡️", type="primary", use_container_width=True):
+        salvar_projeto(proj)
+        st.session_state["etapa"] = 3
+        st.rerun()
+
+# ==============================================================================
+# PASSO 3: REVISÃO E AUDITORIA ANTI-DEVOLUTIVA (CGJ/MG)
+# ==============================================================================
+elif st.session_state["etapa"] == 3:
+    alertas = auditar_processo(proj)
+    m1, m2, m3 = st.columns(3)
+    m1.metric("🔴 Bloqueios Críticos", sum(1 for a in alertas if a["nivel"] == "VERMELHO"))
+    m2.metric("🟡 Alertas de Atenção", sum(1 for a in alertas if a["nivel"] == "AMARELO"))
+    m3.metric("🟢 Itens Validados", sum(1 for a in alertas if a["nivel"] == "VERDE"))
+
+    with st.expander("🔎 Painel de Auditoria Anti-Devolutiva (Provimento Conjunto nº 93/2020 — MG)", expanded=True):
+        for a in alertas:
+            if a["nivel"] == "VERMELHO":
+                st.error(f"**{a['regra']}:** {a['detalhe']}")
+            elif a["nivel"] == "AMARELO":
+                st.warning(f"**{a['regra']}:** {a['detalhe']}")
+            else:
+                st.success(f"**{a['regra']}:** {a['detalhe']}")
+
+    st.markdown('<div class="fac-card"><h4>📝 Conferência Rápida — Proprietário e Imóvel</h4><p>Ajuste qualquer dado abaixo e clique em Reauditar para confirmar que ficou tudo verde.</p></div>', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("**Proprietário / Requerente**")
-        dados["proprietario_tipo"] = st.selectbox("Tipo", ["PF", "PJ", "Espólio"], index=["PF", "PJ", "Espólio"].index(dados.get("proprietario_tipo", "PF")))
-        dados["proprietario_nome"] = st.text_input("Nome Completo / Razão Social", value=dados.get("proprietario_nome", ""))
-        dados["proprietario_doc"] = st.text_input("CPF ou CNPJ", value=dados.get("proprietario_doc", ""))
-        dados["proprietario_rg"] = st.text_input("RG / Órgão Expedidor", value=dados.get("proprietario_rg", ""))
-        dados["proprietario_estado_civil"] = st.text_input("Estado Civil", value=dados.get("proprietario_estado_civil", ""))
-        dados["regime_bens"] = st.text_input("Regime de Bens", value=dados.get("regime_bens", ""))
-        dados["proprietario_prof"] = st.text_input("Profissão", value=dados.get("proprietario_prof", ""))
-        dados["proprietario_endereco"] = st.text_input("Endereço Completo", value=dados.get("proprietario_endereco", ""))
-        dados["conjuge_nome"] = st.text_input("Cônjuge (se aplicável)", value=dados.get("conjuge_nome", ""))
-        dados["conjuge_cpf"] = st.text_input("CPF do Cônjuge", value=dados.get("conjuge_cpf", ""))
-        dados["representante_legal_ou_inventariante"] = st.text_input("Representante Legal / Inventariante (PJ ou Espólio)", value=dados.get("representante_legal_ou_inventariante", ""))
+        proj["proprietario_tipo"] = st.selectbox("Tipo de Proprietário", ["PF", "PJ", "Espólio"], index=["PF", "PJ", "Espólio"].index(proj.get("proprietario_tipo", "PF")))
+        proj["proprietario_nome"] = st.text_input("Nome / Razão Social", value=proj.get("proprietario_nome", ""))
+        proj["proprietario_doc"] = st.text_input("CPF / CNPJ", value=proj.get("proprietario_doc", ""))
+        proj["proprietario_rg"] = st.text_input("RG / Órgão Expedidor", value=proj.get("proprietario_rg", ""))
+        proj["proprietario_estado_civil"] = st.text_input("Estado Civil", value=proj.get("proprietario_estado_civil", ""))
+        proj["regime_bens"] = st.text_input("Regime de Bens", value=proj.get("regime_bens", ""))
+        proj["proprietario_prof"] = st.text_input("Profissão", value=proj.get("proprietario_prof", ""))
+        proj["proprietario_endereco"] = st.text_input("Endereço Completo", value=proj.get("proprietario_endereco", ""))
+        proj["conjuge_nome"] = st.text_input("Nome do Cônjuge (se casado)", value=proj.get("conjuge_nome", ""))
+        proj["conjuge_cpf"] = st.text_input("CPF do Cônjuge", value=proj.get("conjuge_cpf", ""))
+        proj["representante_legal_ou_inventariante"] = st.text_input("Representante Legal / Inventariante", value=proj.get("representante_legal_ou_inventariante", ""))
 
     with col2:
-        st.markdown("**Imóvel, Cadastros e Áreas**")
-        dados["imovel_denominacao"] = st.text_input("Denominação do Imóvel", value=dados.get("imovel_denominacao", ""))
-        dados["imovel_municipio"] = st.text_input("Município (MG)", value=dados.get("imovel_municipio", ""))
-        dados["comarca_uf"] = st.text_input("Comarca do CRI (ex.: Porteirinha/MG)", value=dados.get("comarca_uf", ""))
-        dados["cartorio_cns"] = st.text_input("CNS do Cartório", value=dados.get("cartorio_cns", ""))
-        dados["matricula_numero"] = st.text_input("Nº da Matrícula / Transcrição", value=dados.get("matricula_numero", ""))
-        dados["incra_sncr"] = st.text_input("Código INCRA / SNCR", value=dados.get("incra_sncr", ""))
-        dados["cib_nirf"] = st.text_input("CIB / NIRF", value=dados.get("cib_nirf", ""))
-        dados["car_numero"] = st.text_input("Recibo CAR", value=dados.get("car_numero", ""))
-        dados["sigef_codigo"] = st.text_input("Código de Certificação SIGEF", value=dados.get("sigef_codigo", ""))
-        dados["art_numero"] = st.text_input("Nº da ART (CREA-MG)", value=dados.get("art_numero", ""))
-        c_a1, c_a2, c_a3 = st.columns(3)
-        dados["area_matricula_ha"] = c_a1.number_input("Área Matrícula (ha)", value=float(dados.get("area_matricula_ha") or 0.0), format="%.4f")
-        dados["area_ccir_ha"] = c_a2.number_input("Área CCIR (ha)", value=float(dados.get("area_ccir_ha") or 0.0), format="%.4f")
-        dados["area_memorial_ha"] = c_a3.number_input("Área Memorial (ha)", value=float(dados.get("area_memorial_ha") or 0.0), format="%.4f")
-        c_p1, c_p2 = st.columns(2)
-        dados["perimetro_m"] = c_p1.number_input("Perímetro (m)", value=float(dados.get("perimetro_m") or 0.0), format="%.3f")
-        dados["fmp_municipio_ha"] = c_p2.number_input("FMP do Município (ha)", value=float(dados.get("fmp_municipio_ha") or 3.0), format="%.4f")
-        c_v1, c_v2 = st.columns(2)
-        dados["valor_mercado_num"] = c_v1.text_input("Valor de Mercado (R$)", value=dados.get("valor_mercado_num", ""))
-        dados["valor_mercado_extenso"] = c_v2.text_input("Valor por Extenso", value=dados.get("valor_mercado_extenso", ""))
+        proj["imovel_denominacao"] = st.text_input("Denominação do Imóvel", value=proj.get("imovel_denominacao", ""))
+        proj["imovel_municipio"] = st.text_input("Município (MG)", value=proj.get("imovel_municipio", ""))
+        proj["comarca_uf"] = st.text_input("Comarca do CRI (ex.: Porteirinha/MG)", value=proj.get("comarca_uf", ""))
+        proj["cartorio_cns"] = st.text_input("CNS do Cartório", value=proj.get("cartorio_cns", ""))
+        proj["matricula_numero"] = st.text_input("Nº da Matrícula / Transcrição", value=proj.get("matricula_numero", ""))
+        proj["incra_sncr"] = st.text_input("CCIR / SNCR", value=proj.get("incra_sncr", ""))
+        proj["cib_nirf"] = st.text_input("CIB / NIRF", value=proj.get("cib_nirf", ""))
+        proj["car_numero"] = st.text_input("Recibo CAR", value=proj.get("car_numero", ""))
+        proj["sigef_codigo"] = st.text_input("Código SIGEF", value=proj.get("sigef_codigo", ""))
+        proj["art_numero"] = st.text_input("Nº da ART (CREA-MG)", value=proj.get("art_numero", ""))
+        ca1, ca2, ca3 = st.columns(3)
+        proj["area_matricula_ha"] = ca1.number_input("Área Matrícula (ha)", value=float(proj.get("area_matricula_ha") or 0.0), format="%.4f")
+        proj["area_ccir_ha"] = ca2.number_input("Área CCIR (ha)", value=float(proj.get("area_ccir_ha") or 0.0), format="%.4f")
+        proj["area_memorial_ha"] = ca3.number_input("Área Memorial (ha)", value=float(proj.get("area_memorial_ha") or 0.0), format="%.4f")
+        cp1, cp2 = st.columns(2)
+        proj["perimetro_m"] = cp1.number_input("Perímetro (m)", value=float(proj.get("perimetro_m") or 0.0), format="%.3f")
+        proj["fmp_municipio_ha"] = cp2.number_input("FMP Município (ha)", value=float(proj.get("fmp_municipio_ha") or 3.0), format="%.4f")
+        cv1, cv2 = st.columns(2)
+        proj["valor_mercado_num"] = cv1.text_input("Valor Real e de Mercado (R$)", value=proj.get("valor_mercado_num", ""))
+        proj["valor_mercado_extenso"] = cv2.text_input("Valor por Extenso", value=proj.get("valor_mercado_extenso", ""))
 
-    st.markdown("**Memorial Descritivo (texto completo do perímetro)**")
-    dados["memorial_texto"] = st.text_area("Memorial", value=dados.get("memorial_texto", ""), height=130, label_visibility="collapsed")
+    if rito_info.get("exige_fmp"):
+        st.markdown("**Glebas / Parcelas e Remanescente**")
+        df_g = pd.DataFrame(proj.get("glebas") or [{"nome": "Gleba 01", "area_ha": 0.0, "perimetro_m": 0.0, "sigef": "", "valor_rs": ""}])
+        proj["glebas"] = st.data_editor(df_g, num_rows="dynamic", use_container_width=True).to_dict(orient="records")
 
-    if RITOS_MG[dados["rito"]]["exige_fmp"]:
-        st.markdown("**Glebas / Parcelas e Remanescente (Desmembramento / Estremação)**")
-        df_glebas = pd.DataFrame(dados.get("glebas") or [{"nome": "Gleba 01", "area_ha": 0.0, "perimetro_m": 0.0, "sigef": "", "valor_rs": ""}])
-        edited_glebas = st.data_editor(df_glebas, num_rows="dynamic", use_container_width=True)
-        dados["glebas"] = edited_glebas.to_dict(orient="records")
+    proj["memorial_texto"] = st.text_area("Memorial Descritivo (texto completo)", value=proj.get("memorial_texto", ""), height=130)
 
-    st.markdown("**Lista de Confrontantes**")
-    df_confs = pd.DataFrame(
-        dados.get("confrontantes")
-        or [{"nome": "", "tipo": "PF", "doc": "", "rg": "", "qualificacao": "", "endereco": "", "matricula": "", "cns": "", "representante_ou_inventariante": "", "falecido": False}]
-    )
-    edited_confs = st.data_editor(df_confs, num_rows="dynamic", use_container_width=True)
-    dados["confrontantes"] = edited_confs.to_dict(orient="records")
-    st.session_state["dados"] = dados
+    c_b1, c_b2, c_b3 = st.columns([1, 1, 2])
+    if c_b1.button("⬅️ Voltar aos Confrontantes", use_container_width=True):
+        salvar_projeto(proj)
+        st.session_state["etapa"] = 2
+        st.rerun()
+    if c_b2.button("🔄 Reauditar e Salvar", use_container_width=True):
+        salvar_projeto(proj)
+        st.toast("Auditoria atualizada!", icon="🔄")
+        st.rerun()
+    if c_b3.button("Avançar para Gerar Peças Timbradas ➡️", type="primary", use_container_width=True):
+        salvar_projeto(proj)
+        st.session_state["etapa"] = 4
+        st.rerun()
 
-# ── ETAPA 3 ──
-with tab3:
-    st.subheader("Painel de Auditoria Anti-Devolutiva (CGJ/MG)")
-    alertas = auditar_processo(dados)
-    n_verm = sum(1 for a in alertas if a["nivel"] == "VERMELHO")
-    n_amar = sum(1 for a in alertas if a["nivel"] == "AMARELO")
-    n_verd = sum(1 for a in alertas if a["nivel"] == "VERDE")
-    m1, m2, m3 = st.columns(3)
-    m1.metric("🔴 Bloqueios Críticos", n_verm)
-    m2.metric("🟡 Alertas de Atenção", n_amar)
-    m3.metric("🟢 Itens Validados", n_verd)
-
-    for a in alertas:
-        if a["nivel"] == "VERMELHO":
-            st.error(f"**{a['regra']}:** {a['detalhe']}")
-        elif a["nivel"] == "AMARELO":
-            st.warning(f"**{a['regra']}:** {a['detalhe']}")
-        else:
-            st.success(f"**{a['regra']}:** {a['detalhe']}")
-
-# ── ETAPA 4 ──
-with tab4:
-    st.subheader("Geração do Pacote Completo no Papel Timbrado Oficial")
-    alertas_finais = auditar_processo(dados)
+# ==============================================================================
+# PASSO 4: GERAR PACOTE COMPLETO NO TIMBRADO OFICIAL (.ZIP)
+# ==============================================================================
+elif st.session_state["etapa"] == 4:
+    alertas_finais = auditar_processo(proj)
     if any(a["nivel"] == "VERMELHO" for a in alertas_finais):
-        st.warning("Existem alertas vermelhos na aba 3. Você ainda pode gerar o pacote para rascunho, mas recomenda-se corrigir antes do protocolo.")
-    gerar_pdf = st.checkbox("Incluir versão PDF pronta para impressão além do Word (.docx)", value=True)
-    if st.button("📦 Salvar no Banco e Gerar Pacote (.zip)", type="primary"):
-        salvar_processo(dados)
-        zip_bytes = gerar_pacote_zip(dados, alertas_finais, gerar_pdf=gerar_pdf)
-        nome_arq = re.sub(r"[^A-Za-z0-9]+", "_", f"Dossie_{dados.get('imovel_denominacao') or 'Imovel'}_Mat_{dados.get('matricula_numero') or 'SN'}") + ".zip"
-        st.success("Pacote gerado e processo salvo no histórico!")
-        st.download_button(
-            label=f"⬇️ Baixar {nome_arq}",
-            data=zip_bytes,
-            file_name=nome_arq,
-            mime="application/zip",
-        )
+        st.warning("Existem bloqueios vermelhos na auditoria (Passo 3). Você pode gerar agora como rascunho ou voltar para corrigir antes do protocolo.")
+
+    confs_priv = [c for c in proj.get("confrontantes", []) if (c.get("nome") or "").strip() and not c.get("imovel_publico_ou_estrada")]
+    st.markdown(
+        f'<div class="fac-card fac-card-green"><h4>📦 Dossiê Pronto para Geração no Timbrado Oficial Facillyte</h4>'
+        f'<p>• 1 Requerimento de <b>{proj["rito"]}</b> para o CRI de <b>{proj.get("comarca_uf") or "[Comarca]"}</b><br>'
+        f'• <b>{len(confs_priv)}</b> Declaração(ões) individual(is) de anuência de confrontante<br>'
+        f'• 1 Declaração Conjunta (Proprietário + Eng. Civil Marcos Franciel, CREA-MG 248849/D)<br>'
+        f'• 1 Declaração de Valor Real e de Mercado (Lei Estadual nº 15.424/2004)<br>'
+        f'• 1 Memorial Descritivo padronizado + 1 Checklist Anti-Devolutiva</p></div>',
+        unsafe_allow_html=True,
+    )
+
+    gerar_pdf = st.checkbox("Incluir também os arquivos em PDF prontos para impressão além do Word (.docx)", value=True)
+    if st.button("🚀 Gerar Pacote Completo para Protocolo (.zip)", type="primary", use_container_width=True):
+        salvar_projeto(proj)
+        with st.spinner("Montando todas as peças no papel timbrado oficial da Facillyte..."):
+            zip_bytes = gerar_pacote_zip(proj, alertas_finais, gerar_pdf=gerar_pdf)
+            nome_arq = re.sub(r"[^A-Za-z0-9]+", "_", f"Dossie_{proj.get('nome_projeto') or 'Facillyte'}") + ".zip"
+            st.toast("Pacote gerado com sucesso!", icon="🎉")
+            st.download_button(
+                label=f"⬇️ Baixar {nome_arq}",
+                data=zip_bytes,
+                file_name=nome_arq,
+                mime="application/zip",
+                use_container_width=True,
+            )
+
+    if st.button("⬅️ Voltar para Revisão e Auditoria"):
+        st.session_state["etapa"] = 3
+        st.rerun()

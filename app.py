@@ -1051,8 +1051,13 @@ def auditar_processo(d: dict) -> list[dict]:
 
 
 # ==============================================================================
-# GERADOR DE PEÇAS NO TIMBRADO OFICIAL DE 3 COLUNAS (.DOCX + .PDF)
+# GERADOR DE PEÇAS NO TIMBRADO OFICIAL — PADRÃO LEVE VALIDADO (TIMES NEW ROMAN 11)
+# Espaçamento: Antes 0 pt, Depois 0 pt, Entrelinhas Simples (1,0)
 # ==============================================================================
+FONT_DOC = "Times New Roman"
+SIZE_DOC = Pt(11)
+
+
 def cm_to_dxa(cm_val: float) -> int:
     return int(round(cm_val * 566.929))
 
@@ -1101,15 +1106,17 @@ def novo_doc_timbrado():
     for sec in doc.sections:
         sec.page_width = Mm(210)
         sec.page_height = Mm(297)
-        sec.top_margin = Cm(3.35)
-        sec.bottom_margin = Cm(2.6)
+        sec.top_margin = Cm(3.2)
+        sec.bottom_margin = Cm(2.4)
         sec.left_margin = Cm(2.2)
         sec.right_margin = Cm(2.2)
-        sec.header_distance = Cm(0.8)
-        sec.footer_distance = Cm(0.85)
+        sec.header_distance = Cm(0.75)
+        sec.footer_distance = Cm(0.8)
 
         hdr = sec.header
         hdr.is_linked_to_previous = False
+        hdr.paragraphs[0].paragraph_format.space_before = Pt(0)
+        hdr.paragraphs[0].paragraph_format.space_after = Pt(0)
         hdr.paragraphs[0].paragraph_format.line_spacing = Pt(1)
         htbl = hdr.add_table(rows=1, cols=3, width=Cm(16.6))
         htbl.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -1128,19 +1135,21 @@ def novo_doc_timbrado():
         set_fixed_widths(htbl, [3.60, 9.70, 3.30])
         for idx in range(3):
             htbl.rows[0].cells[idx].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-            set_cell_mar(htbl.rows[0].cells[idx], 50, 50, 70, 70)
+            set_cell_mar(htbl.rows[0].cells[idx], 45, 45, 70, 70)
 
         p0 = htbl.rows[0].cells[0].paragraphs[0]
         p0.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p0.paragraph_format.space_before = Pt(0)
+        p0.paragraph_format.space_after = Pt(0)
         if os.path.exists(LOGO_ENG):
             p0.add_run().add_picture(LOGO_ENG, width=Cm(2.85))
         else:
             r = p0.add_run("FACILLYTE\nENGENHARIA")
-            r.font.bold, r.font.color.rgb = True, RGB_PRIMARY
+            r.font.name, r.font.bold, r.font.color.rgb = FONT_DOC, True, RGB_PRIMARY
 
         c1 = htbl.rows[0].cells[1]
         for idx, (txt, sz, bld, col) in enumerate([
-            ("FACILLYTE ENGENHARIA LTDA", 12, True, RGB_PRIMARY),
+            ("FACILLYTE ENGENHARIA LTDA", 11.5, True, RGB_PRIMARY),
             ("Topografia • Georreferenciamento • Regularização Fundiária", 9.5, True, RGB_ACCENT),
             ("Rua Ayrton Senna, 425 – Vila Nova • CEP 39.517-000 – Pai Pedro/MG", 9.5, False, RGB_SLATE),
             ("CNPJ: 40.310.224/0001-14 • Tel.: (38) 9 9881-0036 • facillyteengenharia@gmail.com", 9.5, False, RGB_MUTED),
@@ -1148,26 +1157,31 @@ def novo_doc_timbrado():
             pp = c1.paragraphs[0] if idx == 0 else c1.add_paragraph()
             pp.alignment = WD_ALIGN_PARAGRAPH.CENTER
             pp.paragraph_format.space_before = Pt(0)
-            pp.paragraph_format.space_after = Pt(1 if idx < 3 else 0)
+            pp.paragraph_format.space_after = Pt(0)
+            pp.paragraph_format.line_spacing = 1.0
             rr = pp.add_run(txt)
-            rr.font.name, rr.font.size, rr.font.bold, rr.font.color.rgb = "Calibri", Pt(sz), bld, col
+            rr.font.name, rr.font.size, rr.font.bold, rr.font.color.rgb = FONT_DOC, Pt(sz), bld, col
 
         p2 = htbl.rows[0].cells[2].paragraphs[0]
         p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p2.paragraph_format.space_before = Pt(0)
+        p2.paragraph_format.space_after = Pt(0)
         if os.path.exists(LOGO_TOPO):
-            p2.add_run().add_picture(LOGO_TOPO, width=Cm(2.15))
+            p2.add_run().add_picture(LOGO_TOPO, width=Cm(2.10))
         else:
             r = p2.add_run("FACILLYTE\nTOPOGRAFIA")
-            r.font.bold, r.font.color.rgb = True, RGB_ACCENT
+            r.font.name, r.font.bold, r.font.color.rgb = FONT_DOC, True, RGB_ACCENT
 
         p_acc = hdr.add_paragraph()
-        p_acc.paragraph_format.space_before, p_acc.paragraph_format.space_after, p_acc.paragraph_format.line_spacing = Pt(1), Pt(3), Pt(2)
+        p_acc.paragraph_format.space_before, p_acc.paragraph_format.space_after, p_acc.paragraph_format.line_spacing = Pt(0), Pt(0), Pt(2)
         p_acc._p.get_or_add_pPr().append(
             parse_xml(f'<w:pBdr {nsdecls("w")}><w:top w:val="single" w:sz="8" w:space="0" w:color="{HEX_ACCENT}"/></w:pBdr>')
         )
 
         ftr = sec.footer
         ftr.is_linked_to_previous = False
+        ftr.paragraphs[0].paragraph_format.space_before = Pt(0)
+        ftr.paragraphs[0].paragraph_format.space_after = Pt(0)
         ftr.paragraphs[0].paragraph_format.line_spacing = Pt(1)
         ftbl = ftr.add_table(rows=1, cols=3, width=Cm(16.6))
         ftbl.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -1185,86 +1199,168 @@ def novo_doc_timbrado():
         )
         set_fixed_widths(ftbl, [2.20, 12.20, 2.20])
         for idx in range(3):
-            set_cell_mar(ftbl.rows[0].cells[idx], 50, 10, 15, 15)
+            set_cell_mar(ftbl.rows[0].cells[idx], 45, 10, 15, 15)
 
         fc1 = ftbl.rows[0].cells[1]
         fp1 = fc1.paragraphs[0]
         fp1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        fp1.paragraph_format.space_before, fp1.paragraph_format.space_after, fp1.paragraph_format.line_spacing = Pt(0), Pt(0), 1.0
         r1 = fp1.add_run("Rua Ayrton Senna, 425 – Vila Nova • CEP 39.517-000 – Pai Pedro/MG")
-        r1.font.name, r1.font.size, r1.font.color.rgb = "Calibri", Pt(9.5), RGB_SLATE
+        r1.font.name, r1.font.size, r1.font.color.rgb = FONT_DOC, Pt(9.5), RGB_SLATE
         fp2 = fc1.add_paragraph()
         fp2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        fp2.paragraph_format.space_before, fp2.paragraph_format.space_after, fp2.paragraph_format.line_spacing = Pt(0), Pt(0), 1.0
         r2 = fp2.add_run("CNPJ: 40.310.224/0001-14 • Tel.: (38) 9 9881-0036 • E-mail: facillyteengenharia@gmail.com")
-        r2.font.name, r2.font.size, r2.font.color.rgb = "Calibri", Pt(9.5), RGB_MUTED
+        r2.font.name, r2.font.size, r2.font.color.rgb = FONT_DOC, Pt(9.5), RGB_MUTED
 
         fpr = ftbl.rows[0].cells[2].paragraphs[0]
         fpr.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        fpr.paragraph_format.space_before, fpr.paragraph_format.space_after, fpr.paragraph_format.line_spacing = Pt(0), Pt(0), 1.0
         rrp = fpr.add_run("Pág. ")
-        rrp.font.name, rrp.font.size, rrp.font.color.rgb = "Calibri", Pt(9.5), RGB_MUTED
+        rrp.font.name, rrp.font.size, rrp.font.color.rgb = FONT_DOC, Pt(9.5), RGB_MUTED
         fpr._p.append(parse_xml(f'<w:fldSimple {nsdecls("w")} w:instr="PAGE"/>'))
         rrs = fpr.add_run("/")
-        rrs.font.name, rrs.font.size, rrs.font.color.rgb = "Calibri", Pt(9.5), RGB_MUTED
+        rrs.font.name, rrs.font.size, rrs.font.color.rgb = FONT_DOC, Pt(9.5), RGB_MUTED
         fpr._p.append(parse_xml(f'<w:fldSimple {nsdecls("w")} w:instr="NUMPAGES"/>'))
 
-    doc.styles["Normal"].font.name = "Calibri"
-    doc.styles["Normal"].font.size = Pt(11)
-    doc.styles["Normal"].font.color.rgb = RGB_SLATE
+    normal = doc.styles["Normal"]
+    normal.font.name = FONT_DOC
+    normal.font.size = SIZE_DOC
+    normal.font.color.rgb = RGBColor(0x00, 0x00, 0x00)
+    normal.paragraph_format.space_before = Pt(0)
+    normal.paragraph_format.space_after = Pt(0)
+    normal.paragraph_format.line_spacing = 1.0
     return doc
 
 
-def add_p(doc, text, bold=False, center=False, size=11, color=RGB_SLATE, space_after=6, justify=True):
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER if center else (WD_ALIGN_PARAGRAPH.JUSTIFY if justify else WD_ALIGN_PARAGRAPH.LEFT)
+def _fmt_p(p, center=False, right=False, justify=True, keep_with_next=False):
+    if center:
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    elif right:
+        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    elif justify:
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    else:
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after = Pt(space_after)
-    p.paragraph_format.line_spacing = 1.15
-    r = p.add_run(text)
-    r.font.name, r.font.size, r.font.bold, r.font.color.rgb = "Calibri", Pt(size), bold, color
+    p.paragraph_format.space_after = Pt(0)
+    p.paragraph_format.line_spacing = 1.0
+    p.paragraph_format.keep_with_next = keep_with_next
     return p
 
 
-def add_assinatura(doc, nome, legenda):
-    p1 = add_p(doc, "____________________________________________________________", center=True, space_after=2)
-    p1.paragraph_format.space_before = Pt(12)
-    p1.paragraph_format.keep_with_next = True
-    p2 = add_p(doc, nome, bold=True, center=True, space_after=1)
-    p2.paragraph_format.keep_with_next = True
-    add_p(doc, legenda, center=True, size=10, color=RGB_MUTED, space_after=6)
+def add_blank(doc, count: int = 1):
+    for _ in range(count):
+        p = doc.add_paragraph()
+        _fmt_p(p, justify=False)
+        r = p.add_run("")
+        r.font.name = FONT_DOC
+        r.font.size = SIZE_DOC
+
+
+def add_p(doc, text, bold=False, italic=False, underline=False, center=False, right=False, justify=True, keep_with_next=False):
+    p = doc.add_paragraph()
+    _fmt_p(p, center=center, right=right, justify=justify, keep_with_next=keep_with_next)
+    r = p.add_run(text)
+    r.font.name = FONT_DOC
+    r.font.size = SIZE_DOC
+    r.font.bold = bold
+    r.font.italic = italic
+    r.font.underline = underline
+    r.font.color.rgb = RGBColor(0x00, 0x00, 0x00)
+    return p
+
+
+def add_kv_line(doc, label: str, value: str, justify=False):
+    p = doc.add_paragraph()
+    _fmt_p(p, justify=justify)
+    r1 = p.add_run(label)
+    r1.font.name, r1.font.size, r1.font.bold = FONT_DOC, SIZE_DOC, True
+    r1.font.color.rgb = RGBColor(0x00, 0x00, 0x00)
+    r2 = p.add_run(value)
+    r2.font.name, r2.font.size, r2.font.bold = FONT_DOC, SIZE_DOC, False
+    r2.font.color.rgb = RGBColor(0x00, 0x00, 0x00)
+    return p
+
+
+def add_assinatura(doc, nome: str, linhas_extra: list[str] = None, left: bool = False):
+    add_blank(doc, 2)
+    add_p(doc, "____________________________________________________________", center=not left, justify=False, keep_with_next=True)
+    add_p(doc, nome, bold=True, center=not left, justify=False, keep_with_next=bool(linhas_extra))
+    for idx, ln in enumerate(linhas_extra or []):
+        add_p(doc, ln, center=not left, justify=False, keep_with_next=(idx < len(linhas_extra) - 1))
+
+
+def data_extenso_pt() -> str:
+    meses = [
+        "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+        "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+    ]
+    hoje = datetime.now()
+    return f"{hoje.day:02d} de {meses[hoje.month - 1]} de {hoje.year}"
 
 
 def qualificacao_proprietario(d: dict) -> str:
     partes = [d.get("proprietario_nome") or "[PROPRIETÁRIO]"]
     if d.get("proprietario_tipo") == "PJ":
-        partes.append(f"pessoa jurídica inscrita no CNPJ nº {d.get('proprietario_doc', '')}")
+        partes.append(f"pessoa jurídica de direito privado, inscrita no CNPJ sob o nº {d.get('proprietario_doc', '')}")
         if d.get("representante_legal_ou_inventariante"):
             partes.append(f"neste ato representada por {d['representante_legal_ou_inventariante']}")
     else:
-        for campo in [d.get("proprietario_nac"), d.get("proprietario_estado_civil"), d.get("proprietario_prof")]:
+        if d.get("proprietario_doc"):
+            partes.append(f"CPF nº {d['proprietario_doc']}")
+        if d.get("proprietario_rg"):
+            partes.append(f"Carteira de Identidade RG nº {d['proprietario_rg']}")
+        for campo in [d.get("proprietario_nac"), d.get("proprietario_prof")]:
             if campo:
                 partes.append(campo)
-        if d.get("proprietario_rg"):
-            partes.append(f"RG {d['proprietario_rg']}")
-        if d.get("proprietario_doc"):
-            partes.append(f"CPF {d['proprietario_doc']}")
-        if d.get("conjuge_nome"):
-            partes.append(f"casado(a) sob o regime de {d.get('regime_bens') or 'comunhão parcial de bens'} com {d['conjuge_nome']} (CPF {d.get('conjuge_cpf', '')})")
+        if d.get("proprietario_filiacao"):
+            partes.append(f"filho(a) de {d['proprietario_filiacao']}")
+        if d.get("proprietario_estado_civil"):
+            ec_str = d["proprietario_estado_civil"]
+            if d.get("conjuge_nome"):
+                ec_str += f" sob o regime de {d.get('regime_bens') or 'comunhão parcial de bens'} com {d['conjuge_nome']}"
+                if d.get("conjuge_cpf"):
+                    ec_str += f", CPF nº {d['conjuge_cpf']}"
+                if d.get("conjuge_rg"):
+                    ec_str += f", RG nº {d['conjuge_rg']}"
+            partes.append(ec_str)
         if d.get("representante_legal_ou_inventariante"):
-            partes.append(f"representado(a) por {d['representante_legal_ou_inventariante']}")
+            partes.append(f"(neste ato representado por {d['representante_legal_ou_inventariante']})")
     if d.get("proprietario_endereco"):
-        partes.append(f"residente/sediado(a) em {d['proprietario_endereco']}")
+        partes.append(f"residente e domiciliado(a) em {d['proprietario_endereco']}")
     return ", ".join(partes)
 
 
-def gerar_pacote_zip(d: dict, alertas: list[dict], gerar_pdf: bool = True) -> bytes:
-    data_hoje = datetime.now().strftime("%d/%m/%Y")
+def qualificacao_confrontante(c: dict, comarca_padrao: str) -> str:
+    partes = [c.get("nome") or "[CONFRONTANTE]"]
+    if c.get("representante_ou_inventariante"):
+        partes.append(f"neste ato representado(a) por {c['representante_ou_inventariante']}")
+    if c.get("rg"):
+        partes.append(f"RG nº {c['rg']}")
+    if c.get("doc"):
+        lbl_doc = "CNPJ" if c.get("tipo") == "PJ" else "CPF"
+        partes.append(f"{lbl_doc} nº {c['doc']}")
+    if c.get("qualificacao"):
+        partes.append(c["qualificacao"])
+    if c.get("endereco"):
+        partes.append(f"residente e domiciliado(a) em {c['endereco']}")
+    if c.get("posseiro") or "posse" in (c.get("matricula") or "").lower():
+        partes.append("(Imóvel: Posse, cópia da declaração de posse em anexo)")
+    elif c.get("matricula"):
+        partes.append(f"(Imóvel matrícula nº {c['matricula']}, CRI da Comarca de {comarca_padrao})")
+    return ", ".join(partes)
+
+
+def gerar_pacote_zip(d: dict, alertas: list[dict], gerar_pdf: bool = True, gerar_anuencias_individuais: bool = True) -> bytes:
+    data_ext = data_extenso_pt()
     comarca = d.get("comarca_uf") or "Porteirinha/MG"
     mun = d.get("imovel_municipio") or "Pai Pedro"
     rito = d.get("rito")
-    fundamento = RITOS_MG[rito]["fundamento"]
     qual_prop = qualificacao_proprietario(d)
-    rt_legenda = f"Engenheiro Civil • CREA-MG 248849/D • RNP 141908491-7/MG • INCRA: YIDB • ART nº {d.get('art_numero', '')}"
     partes = normalizar_partes(d)
     guia_fisico = gerar_guia_protocolo_fisico_mg(d)
+
     # Soma automática das partes se valor total estiver vazio + preenchimento automático do extenso
     val_total_num = parse_brl(d.get("valor_mercado_num"))
     if val_total_num is None and len(partes) >= 2:
@@ -1274,104 +1370,235 @@ def gerar_pacote_zip(d: dict, alertas: list[dict], gerar_pdf: bool = True) -> by
     val_num_fmt = formatar_brl(val_total_num) if val_total_num is not None else (d.get("valor_mercado_num") or "")
     val_ext_auto = valor_por_extenso_brl(val_num_fmt) or (d.get("valor_mercado_extenso") or "")
 
+    area_reg = float(d.get("area_matricula_ha") or 0)
+    area_tot = float(d.get("area_memorial_ha") or 0) or sum(float(p.get("area_ha") or 0) for p in partes)
+    mat_num = d.get("matricula_numero") or ""
+    mat_txt = "Imóvel de Posse (sem matrícula registrada)" if d.get("imovel_de_posse") else f"Matrícula nº {mat_num}"
+    confs_priv = [c for c in d.get("confrontantes", []) if (c.get("nome") or "").strip() and not c.get("imovel_publico_ou_estrada")]
+
     docs_map = {}
 
-    # 1. Requerimento Principal (citando automaticamente todas as partes/glebas e eventual posseiro)
+    # ── 1. REQUERIMENTO (Padrão leve validado REQ 001 + Prov. Conj. 93/2020 CGJ/MG) ──
     doc_req = novo_doc_timbrado()
-    add_p(doc_req, f"ILUSTRÍSSIMO(A) SENHOR(A) OFICIAL(A) DO CARTÓRIO DE REGISTRO DE IMÓVEIS DA COMARCA DE {comarca.upper()}", bold=True, justify=False, space_after=8)
-    add_p(doc_req, f"REQUERIMENTO DE {rito.upper()}", bold=True, center=True, size=13, color=RGB_PRIMARY, space_after=3)
-    add_p(doc_req, fundamento, center=True, size=10, color=RGB_MUTED, space_after=8)
-    mat_txt = "Imóvel de Posse (sem matrícula registrada)" if d.get("imovel_de_posse") else f"Matrícula nº {d.get('matricula_numero', '')}, Livro {d.get('livro_numero', '2')}, CNS {d.get('cartorio_cns', '')}"
-    add_p(doc_req, f"{qual_prop}, juntamente com o Responsável Técnico MARCOS FRANCIEL FERNANDES DOS SANTOS, Engenheiro Civil, CREA-MG 248849/D, RNP 141908491-7/MG, INCRA YIDB, com escritório à Rua Ayrton Senna, 425, Vila Nova, Pai Pedro/MG, vêm requerer o processamento de {rito} no imóvel denominado {d.get('imovel_denominacao', '')}, Município de {mun}/MG, {mat_txt}, INCRA/SNCR {d.get('incra_sncr', '')}, CIB/NIRF {d.get('cib_nirf', '')}, CAR {d.get('car_numero', '')}, Certificação SIGEF {d.get('sigef_codigo', 'N/A')}.")
+    add_p(doc_req, f"ILMO(A). SR(A). OFICIAL(A) DO REGISTRO DE IMÓVEIS DA COMARCA DE {comarca.upper()}", bold=True, justify=False)
+    add_blank(doc_req, 1)
+    add_p(doc_req, f"REQUERIMENTO - {rito.upper()}", bold=True, underline=True, center=True)
+    add_blank(doc_req, 1)
 
+    tel_str = d.get("proprietario_telefone") or "____________________"
+    email_str = d.get("proprietario_email") or "____________________"
+    add_p(doc_req, f"Requerente: {qual_prop}; Telefone: {tel_str}; E-mail: {email_str}.")
+    add_p(
+        doc_req,
+        "Em observância ao disposto no Art. 4º, § 2º, do Provimento nº 61/2017/CNJ, declaro que desconheço/não possuo os dados de qualificação não fornecidos neste requerimento e/ou nos documentos apresentados.",
+        italic=True,
+    )
+    add_blank(doc_req, 1)
+    add_p(
+        doc_req,
+        f"Em conformidade com a Lei Federal nº 6.015/73 (alterada pela Lei nº 10.931/04), Lei nº 10.267/01 e Provimento Conjunto nº 93/2020 da CGJ/MG (arts. 891 e seguintes), requer o processamento de {rito.upper()} do imóvel {mat_txt} (CRI da Comarca de {comarca}), expondo o seguinte:",
+    )
+    add_blank(doc_req, 1)
+    add_p(doc_req, f"1 – O(s) requerente(s) é(são) o(s) único(s) proprietário(s)/titular(es) do imóvel denominado {d.get('imovel_denominacao', '')}, situado no município de {mun}/MG, cadastrado no INCRA/SNCR sob o nº {d.get('incra_sncr', '')}, CIB/NIRF {d.get('cib_nirf', '')}, CAR {d.get('car_numero', '')}, com área registrada de {area_reg:.4f} ha.")
+    add_blank(doc_req, 1)
     if len(partes) >= 2:
-        resumo_partes = "; ".join(
+        resumo_p = "; ".join(
             f"{p.get('nome', f'Parte {i+1}')}: {float(p.get('area_ha') or 0):.4f} ha (Perímetro {float(p.get('perimetro_m') or 0):.3f} m"
             + (f", SIGEF {p['sigef']}" if p.get("sigef") else "") + ")"
             for i, p in enumerate(partes)
         )
-        add_p(doc_req, f"Discriminação das {len(partes)} Partes / Glebas (memoriais individuais anexos): {resumo_partes}.", bold=True)
-
-    add_p(doc_req, f"Área Registrada: {float(d.get('area_matricula_ha') or 0):.4f} ha | Área Total Apurada: {float(d.get('area_memorial_ha') or sum(float(p.get('area_ha') or 0) for p in partes)):.4f} ha | Valor Real e de Mercado (Lei Est. 15.424/2004, Tabela 4): R$ {val_num_fmt} ({val_ext_auto}).", bold=True)
-
-    confs_posse = [c["nome"] for c in d.get("confrontantes", []) if c.get("posseiro") and (c.get("nome") or "").strip()]
+        add_p(doc_req, f"2 – Após levantamento topográfico georreferenciado (Datum SIRGAS 2000) feito pelo Responsável Técnico Marcos Franciel Fernandes dos Santos, Engenheiro Civil, CREA-MG 248849/D, INCRA YIDB (ART nº {d.get('art_numero', '')}), verificou-se a área total de {area_tot:.4f} ha, composta por {len(partes)} partes com memoriais descritivos individuais anexos: {resumo_p}.")
+    else:
+        add_p(doc_req, f"2 – Após levantamento topográfico georreferenciado (Datum SIRGAS 2000) feito pelo Responsável Técnico Marcos Franciel Fernandes dos Santos, Engenheiro Civil, CREA-MG 248849/D, INCRA YIDB (ART nº {d.get('art_numero', '')}), verificou-se ter o imóvel a área de {area_tot:.4f} ha e perímetro de {float(d.get('perimetro_m') or 0):.3f} m" + (f", certificado no SIGEF sob o código {d['sigef_codigo']}." if d.get("sigef_codigo") else "."))
+    add_blank(doc_req, 1)
+    add_p(doc_req, "3 – O levantamento resulta de medição intramuros, isto é, NÃO houve qualquer investida em áreas de terrenos vizinhos (quer de sua propriedade, quer de outrem), não havendo nenhum acréscimo de área extra nem usurpação de terras devolutas, públicas ou privadas, tendo sido a planta e os memoriais assinados pelos confrontantes com firmas reconhecidas.")
+    add_blank(doc_req, 1)
+    add_p(doc_req, "4 – O procedimento não representa meio de transferência de propriedade (compra/venda, doação, divisão, fusão ou desmembramento irregular), que deve se dar por escritura pública com recolhimento de tributos como ITBI e ITCD, nem abrange área de posse alheia.")
+    add_blank(doc_req, 1)
+    add_p(doc_req, '5 – Os requerentes declaram, juntamente com o responsável técnico que assina este requerimento, que a completa e exata indicação dos confrontantes é de responsabilidade exclusiva deles, e que têm conhecimento do prescrito no art. 213, § 14, da Lei nº 6.015/1973, que dispõe: "Art. 213, § 14 – Verificado a qualquer tempo não serem verdadeiros os fatos constantes do memorial descritivo, responderão os requerentes e o profissional que o elaborou pelos prejuízos causados, independentemente das sanções disciplinares e penais."')
+    add_blank(doc_req, 1)
+    extra_posse = ""
+    confs_posse = [c["nome"] for c in confs_priv if c.get("posseiro")]
     if confs_posse:
-        add_p(doc_req, f"Declaração quanto a Confrontante(s) Posseiro(s) ({', '.join(confs_posse)}): Os requerentes e o Responsável Técnico declaram, nos termos do art. 213, §§ 10 e 17, da Lei nº 6.015/1973, que realizaram buscas e não localizaram matrícula nem titular de domínio do(s) imóvel(is) confrontante(s) ocupado(s) a título de posse, instruindo o pedido com a respectiva comprovação documental de posse autenticada.")
-
-    add_p(doc_req, "Os requerentes e o Responsável Técnico declaram, sob responsabilidade civil e criminal (art. 213, § 14, da Lei nº 6.015/1973), que o levantamento foi realizado in loco (Datum SIRGAS 2000), respeitando integralmente as divisas existentes, faixas de domínio público e os direitos de todos os confrontantes, inexistindo invasão ou ação judicial conexa.")
-    add_p(doc_req, f"Nestes termos, pede deferimento. {mun}/MG, {data_hoje}.", justify=False, space_after=8)
-    add_assinatura(doc_req, d.get("proprietario_nome") or "[PROPRIETÁRIO]", f"Requerente — CPF/CNPJ: {d.get('proprietario_doc', '')}")
+        extra_posse = f" Quanto ao(s) confrontante(s) posseiro(s) ({', '.join(confs_posse)}), declaram ter realizado buscas sem localizar matrícula ou titular de domínio, juntando comprovação documental de posse autenticada (art. 213, §§ 10 e 17, LRP)."
+    add_p(doc_req, f"6 – Declaram, ainda, sob as penas da lei, que não existem outros proprietários, titulares de direitos ou possuidores confrontantes senão os que assinam as peças anexas, inexistindo litígio ou ação judicial em curso ou julgada com o mesmo objeto ou conexa. Para fins da Lei Estadual nº 15.424/2004 (Tabela 4), informam o valor real e de mercado de R$ {val_num_fmt} ({val_ext_auto}).{extra_posse}")
+    add_blank(doc_req, 1)
+    add_p(doc_req, f"Diante do exposto, REQUEREM a V. Sª o deferimento e a devida averbação de {rito} no registro imobiliário.")
+    add_blank(doc_req, 1)
+    add_p(doc_req, f"Nestes termos, pede deferimento. {mun}/MG, {data_ext}.", center=True)
+    add_assinatura(doc_req, "Marcos Franciel Fernandes dos Santos", [f"Engenheiro Civil — CREA-MG 248849/D • ART nº {d.get('art_numero', '')}"])
+    add_assinatura(doc_req, d.get("proprietario_nome") or "[PROPRIETÁRIO]", [f"Proprietário(a) — CPF/CNPJ nº {d.get('proprietario_doc', '')}"])
     if d.get("conjuge_nome"):
-        add_assinatura(doc_req, d["conjuge_nome"], f"Cônjuge — CPF: {d.get('conjuge_cpf', '')}")
-    add_assinatura(doc_req, "MARCOS FRANCIEL FERNANDES DOS SANTOS", rt_legenda)
+        add_assinatura(doc_req, d["conjuge_nome"], [f"Cônjuge — CPF nº {d.get('conjuge_cpf', '')}"])
     docs_map["01_Requerimento_CRI.docx"] = doc_req
 
-    # 2. Anuências Individuais
-    idx_c = 0
-    for c in d.get("confrontantes", []):
-        if not (c.get("nome") or "").strip() or c.get("imovel_publico_ou_estrada"):
-            continue
-        idx_c += 1
-        doc_c = novo_doc_timbrado()
-        add_p(doc_c, "DECLARAÇÃO DE ANUÊNCIA E RECONHECIMENTO DE LIMITES (CONFRONTANTE)", bold=True, center=True, size=13, color=RGB_PRIMARY, space_after=3)
-        add_p(doc_c, "Art. 213, II e § 10, da Lei nº 6.015/1973 • Arts. 891 e 898 do Provimento Conjunto nº 93/2020 (CGJ/MG)", center=True, size=10, color=RGB_MUTED, space_after=8)
-        rep = f", neste ato representado(a) por {c['representante_ou_inventariante']}" if c.get("representante_ou_inventariante") else ""
-        cond_posse = "possuidor(a)/ocupante (comprovante de posse anexo)" if c.get("posseiro") else f"proprietário(a)/titular do imóvel Matrícula/Posse {c.get('matricula', '')} (CNS {c.get('cns', '')})"
-        add_p(doc_c, f"Eu, {c['nome']}{rep}, {c.get('qualificacao', '')}, RG {c.get('rg', '')}, CPF/CNPJ {c.get('doc', '')}, residente/sediado(a) em {c.get('endereco', '')}, na qualidade de {cond_posse}, DECLARO, sob as penas da lei (art. 299 do Código Penal), que concordo integralmente com as medidas perimetrais, coordenadas, azimutes e divisas comuns constantes da planta e memorial(is) descritivo(s) do imóvel {d.get('imovel_denominacao', '')}, {mat_txt} (CRI {comarca}), de propriedade de {d.get('proprietario_nome', '')}, levantado pelo Eng. Civil Marcos Franciel Fernandes dos Santos (CREA-MG 248849/D, INCRA YIDB, ART nº {d.get('art_numero', '')}).")
-        add_p(doc_c, "Declaro ciência de que, nos termos do art. 213, § 10, da Lei nº 6.015/1973 e art. 898 do Provimento Conjunto nº 93/2020/CGJ-MG, minha anuência supre a participação do cônjuge e de eventuais outros condôminos titulares do imóvel limítrofe.")
-        add_p(doc_c, f"{mun}/MG, {data_hoje}.", justify=False, space_after=8)
-        safe_name = re.sub(r"[^A-Za-z0-9]+", "_", c["nome"])[:30]
-        add_assinatura(doc_c, c.get("representante_ou_inventariante") or c["nome"], f"Confrontante ({c['nome']}) — CPF/CNPJ: {c.get('doc', '')}")
-        docs_map[f"02_Anuencia_{idx_c:02d}_{safe_name}.docx"] = doc_c
+    # ── 2. DECLARAÇÃO DE RECONHECIMENTO DE LIMITES COLETIVA (Modelo validado Porteirinha) ──
+    if confs_priv:
+        doc_rl = novo_doc_timbrado()
+        add_p(doc_rl, "DECLARAÇÃO DE RECONHECIMENTO DE LIMITES", bold=True, center=True)
+        add_blank(doc_rl, 1)
+        lista_confs_txt = ", ".join(
+            f"{c['nome']} (CPF/CNPJ nº {c.get('doc', '')}"
+            + (f", neste ato representado por {c['representante_ou_inventariante']}" if c.get("representante_ou_inventariante") else "")
+            + ")"
+            for c in confs_priv
+        )
+        add_p(
+            doc_rl,
+            f"Nós, {lista_confs_txt}, proprietários/possuidores dos imóveis confrontantes ao imóvel denominado {d.get('imovel_denominacao', '')}, município de {mun}/MG, {mat_txt}, registrado no Cartório de Registro de Imóveis da Comarca de {comarca}, cadastrado no INCRA sob o código nº {d.get('incra_sncr', '')}, abaixo assinados, na qualidade de confrontantes do imóvel descrito acima, DECLARAMOS não existir nenhuma disputa ou discordância sobre os limites comuns existentes entre os citados imóveis. Declaramos ainda que estamos cientes de que, nos termos do § 10 do artigo 213 da Lei nº 6.015/73 (LRP) e do art. 898 do Provimento Conjunto nº 93/2020/CGJ-MG, nossa anuência supre a participação do cônjuge e de eventuais outros condôminos titulares do imóvel limítrofe.",
+        )
+        add_blank(doc_rl, 1)
+        add_p(
+            doc_rl,
+            "Declaramos ainda que indicamos as demarcações dos limites entre nossas propriedades, tanto em campo como na sua representação gráfica, ao profissional Marcos Franciel Fernandes dos Santos, Engenheiro Civil, CREA-MG 248849/D, cédula de identidade RG nº MG-18.466.987-SSP/MG, CPF nº 121.339.466-08, credenciado pelo INCRA sob o código YIDB.",
+        )
+        add_blank(doc_rl, 1)
+        add_p(
+            doc_rl,
+            "Concordamos com essas demarcações, representadas em planta e narradas no(s) memorial(is) descritivo(s), ambos em anexo, e reconhecemos essa descrição como o limite legal entre os citados imóveis.",
+        )
+        add_blank(doc_rl, 1)
+        add_p(doc_rl, f"{mun} – MG, {data_ext}.", justify=False)
+        add_blank(doc_rl, 1)
+        add_p(doc_rl, "CONFRONTANTES:", bold=True, italic=True, justify=False)
+        for c in confs_priv:
+            linha_extra = [f"CPF/CNPJ nº {c.get('doc', '')}"]
+            if c.get("representante_ou_inventariante"):
+                linha_extra.append(f"Representado por: {c['representante_ou_inventariante']}")
+            add_assinatura(doc_rl, c["nome"], linha_extra)
+        docs_map["02_Declaracao_Reconhecimento_Limites_Coletiva.docx"] = doc_rl
 
-    # 3. Declaração Conjunta
+        # Opcional: vias individuais por confrontante para reconhecimento de firma separado
+        if gerar_anuencias_individuais:
+            for idx_c, c in enumerate(confs_priv, start=1):
+                doc_c = novo_doc_timbrado()
+                add_p(doc_c, "DECLARAÇÃO INDIVIDUAL DE RECONHECIMENTO DE LIMITES", bold=True, center=True)
+                add_blank(doc_c, 1)
+                add_p(
+                    doc_c,
+                    f"Eu, {qualificacao_confrontante(c, comarca)}, na qualidade de confrontante do imóvel denominado {d.get('imovel_denominacao', '')}, município de {mun}/MG, {mat_txt} (CRI de {comarca}), cadastrado no INCRA sob o nº {d.get('incra_sncr', '')}, DECLARO não existir nenhuma disputa ou discordância sobre os limites comuns entre os citados imóveis, estando ciente de que, nos termos do § 10 do art. 213 da LRP e art. 898 do Provimento Conjunto nº 93/2020/CGJ-MG, minha anuência supre a participação do cônjuge e de eventuais outros condôminos titulares do imóvel limítrofe.",
+                )
+                add_blank(doc_c, 1)
+                add_p(
+                    doc_c,
+                    "Declaro que indiquei as demarcações dos limites em campo ao Eng. Civil Marcos Franciel Fernandes dos Santos, CREA-MG 248849/D, RG nº MG-18.466.987-SSP/MG, CPF nº 121.339.466-08, credenciado pelo INCRA sob o código YIDB, concordando integralmente com a planta e o(s) memorial(is) descritivo(s) anexos.",
+                )
+                add_blank(doc_c, 1)
+                add_p(doc_c, f"{mun} – MG, {data_ext}.", justify=False)
+                safe_name = re.sub(r"[^A-Za-z0-9]+", "_", c["nome"])[:28]
+                add_assinatura(doc_c, c.get("representante_ou_inventariante") or c["nome"], [f"Confrontante ({c['nome']}) — CPF/CNPJ nº {c.get('doc', '')}"])
+                docs_map[f"02_Anuencia_Individual_{idx_c:02d}_{safe_name}.docx"] = doc_c
+
+    # ── 3. DECLARAÇÃO CONJUNTA (Modelo leve validado Porteirinha) ──
     doc_dc = novo_doc_timbrado()
-    add_p(doc_dc, "DECLARAÇÃO CONJUNTA DO(S) PROPRIETÁRIO(S) E DO RESPONSÁVEL TÉCNICO", bold=True, center=True, size=13, color=RGB_PRIMARY, space_after=3)
-    add_p(doc_dc, "Art. 213, § 14, da Lei nº 6.015/1973 • Provimento Conjunto nº 93/2020 (CGJ/MG)", center=True, size=10, color=RGB_MUTED, space_after=8)
-    add_p(doc_dc, f"Referência: Imóvel {d.get('imovel_denominacao', '')}, {mun}/MG, {mat_txt}, CRI de {comarca}.", bold=True)
-    add_p(doc_dc, f"Responsável Técnico: Eu, MARCOS FRANCIEL FERNANDES DOS SANTOS, Engenheiro Civil, CREA-MG 248849/D, RNP 141908491-7/MG, INCRA YIDB (ART nº {d.get('art_numero', '')}), ATESTO sob as penas da lei que efetuei pessoalmente, in loco, o levantamento georreferenciado (SIRGAS 2000), sendo exatos os dados da planta e memorial(is) descritivo(s) e plenamente respeitadas as divisas particulares e faixas de domínio público.")
-    add_p(doc_dc, f"Proprietário(s): {qual_prop}, ATESTAMOS sob as penas da lei serem verdadeiras todas as informações apresentadas, sem alteração de divisas nem invasão de áreas vizinhas, com plena ciência do art. 213, § 14, da Lei nº 6.015/1973 e do art. 299 do Código Penal.")
-    add_p(doc_dc, f"{mun}/MG, {data_hoje}.", justify=False, space_after=8)
-    add_assinatura(doc_dc, "MARCOS FRANCIEL FERNANDES DOS SANTOS", rt_legenda)
-    add_assinatura(doc_dc, d.get("proprietario_nome") or "[PROPRIETÁRIO]", f"Proprietário(a) — CPF/CNPJ: {d.get('proprietario_doc', '')}")
+    add_p(doc_dc, "DECLARAÇÃO CONJUNTA", bold=True, center=True)
+    add_blank(doc_dc, 1)
+    add_p(doc_dc, f"Imóvel denominado {d.get('imovel_denominacao', '')}, município de {mun}/MG, registrado no Cartório de Registro de Imóveis da Comarca de {comarca}, {mat_txt}.", bold=True)
+    add_blank(doc_dc, 1)
+    add_p(doc_dc, "Os proprietários do imóvel supracitado e o responsável técnico declaram, sob as penas da lei, que os dados e informações juntados a este requerimento são verdadeiros. Declaram ainda, sob pena de responsabilidade civil e criminal (art. 213, § 14, da Lei nº 6.015/73), que não houve alteração das divisas do imóvel registrado e que foram respeitados os direitos dos confrontantes.")
+    add_blank(doc_dc, 1)
+    add_p(doc_dc, "Por ser verdade firmamos a presente.", justify=False)
+    add_blank(doc_dc, 1)
+    add_p(doc_dc, f"{mun}/MG, {data_ext}.", justify=False)
+    add_assinatura(
+        doc_dc,
+        "Responsável Técnico: MARCOS FRANCIEL FERNANDES DOS SANTOS",
+        ["Engenheiro Civil — CREA-MG 248849/D", f"Código Credenciamento INCRA: YIDB • ART nº {d.get('art_numero', '')}"],
+        left=True,
+    )
+    add_blank(doc_dc, 1)
+    add_p(doc_dc, "PROPRIETÁRIO", bold=True, justify=False)
+    add_p(doc_dc, "Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas nesta planta e nos memoriais que acompanham o presente.")
+    add_assinatura(doc_dc, d.get("proprietario_nome") or "[PROPRIETÁRIO]", [f"CPF/CNPJ nº {d.get('proprietario_doc', '')}"], left=True)
+    add_blank(doc_dc, 1)
+    add_kv_line(doc_dc, "Qualificação: ", f"{qual_prop} ({mat_txt}, CRI Comarca de {comarca}).", justify=True)
     docs_map["03_Declaracao_Conjunta_Proprietario_RT.docx"] = doc_dc
 
-    # 4. Declaração de Valor Real e de Mercado (com desdobramento por parte se 2+)
+    # ── 4. DECLARAÇÃO DE VALOR REAL E DE MERCADO (com valor por extenso automático) ──
     doc_vm = novo_doc_timbrado()
-    add_p(doc_vm, f"ILUSTRÍSSIMO(A) SENHOR(A) OFICIAL(A) DO CARTÓRIO DE REGISTRO DE IMÓVEIS DA COMARCA DE {comarca.upper()}", bold=True, justify=False, space_after=8)
-    add_p(doc_vm, "DECLARAÇÃO DE VALOR REAL E DE MERCADO DO IMÓVEL", bold=True, center=True, size=13, color=RGB_PRIMARY, space_after=3)
-    add_p(doc_vm, "Art. 10, § 3º, XVI, Lei Estadual nº 15.424/2004 (Tabela 4) • Arts. 134 a 138 do Prov. Conj. nº 93/2020 (CGJ/MG)", center=True, size=10, color=RGB_MUTED, space_after=8)
-    add_p(doc_vm, f"{qual_prop}, proprietário(a) do imóvel {d.get('imovel_denominacao', '')}, {mat_txt}, CRI de {comarca}, requerente de {rito}, em atendimento aos arts. 134 a 138 do Provimento Conjunto nº 93/2020/CGJ-MG e ao art. 10, § 3º, XVI, da Lei Estadual nº 15.424/2004 (alterada pelas Leis nº 25.125/2024 e nº 25.367/2025), DECLARA, sob responsabilidade civil e penal, que o valor real e de mercado do imóvel é de R$ {val_num_fmt} ({val_ext_auto}).")
+    add_p(doc_vm, f"ILMO(A). SENHOR(A) OFICIAL(A) DO REGISTRO DE IMÓVEIS DA COMARCA DE {comarca.upper()}", bold=True, justify=False)
+    add_blank(doc_vm, 1)
+    add_p(doc_vm, "DECLARAÇÃO DE VALOR REAL E DE MERCADO", bold=True, underline=True, center=True)
+    add_blank(doc_vm, 1)
+    txt_partes_vm = ""
     if len(partes) >= 2:
         itens_det = []
         for i, p in enumerate(partes):
             vp = parse_brl(p.get("valor_rs"))
             vp_str = f"R$ {formatar_brl(vp)} ({valor_por_extenso_brl(vp)})" if vp is not None else "R$ [informar]"
-            itens_det.append(f"{p.get('nome', f'Parte {i+1}')} ({float(p.get('area_ha') or 0):.4f} ha): {vp_str}")
-        add_p(doc_vm, f"Discriminação por Parte / Gleba: {'; '.join(itens_det)}.", bold=True)
-    add_p(doc_vm, "Declara ciência de que o valor destina-se ao recolhimento de emolumentos e TFJ, sujeito a arbitramento judicial se manifestamente inferior ao real (arts. 134 a 138 do Prov. Conj. 93/2020), bem como plena ciência do art. 299 do Código Penal Brasileiro.")
-    add_p(doc_vm, f"{mun}/MG, {data_hoje}.", justify=False, space_after=8)
-    add_assinatura(doc_vm, d.get("proprietario_nome") or "[PROPRIETÁRIO]", f"Proprietário(a) — CPF/CNPJ: {d.get('proprietario_doc', '')}")
+            itens_det.append(f"{p.get('nome', f'Parte {i+1}')}, com área de {float(p.get('area_ha') or 0):.4f} ha, valor de {vp_str}")
+        txt_partes_vm = f", composta por {len(partes)} partes, sendo: {'; '.join(itens_det)}"
+    add_p(
+        doc_vm,
+        f"Eu, {qual_prop}, proprietário(a) do imóvel denominado {d.get('imovel_denominacao', '')}, {mat_txt}, desta Serventia, na qualidade de requerente do procedimento de {rito}, para atender à determinação dos arts. 134 a 138 do Provimento Conjunto nº 93/2020/CGJ-MG e do art. 10, § 3º, inciso XVI, da Lei Estadual nº 15.424/2004 (alterada pelas Leis nº 25.125/2024 e nº 25.367/2025 — Tabela 4), DECLARA, sob responsabilidade civil e penal, que o valor real e de mercado do referido imóvel é de R$ {val_num_fmt} ({val_ext_auto}){txt_partes_vm}.",
+    )
+    add_blank(doc_vm, 1)
+    add_p(doc_vm, "Nos termos da citada norma, o valor é declarado apenas para efeitos de recolhimento da Taxa de Fiscalização Judiciária (tributo estadual) e emolumentos. Constatado que o valor indicado é claramente inferior ao real, poderá ser instaurado procedimento de arbitramento judicial, previsto nos arts. 134 a 138 do Provimento Conjunto nº 93/2020/CGJ-MG.")
+    add_blank(doc_vm, 1)
+    add_p(doc_vm, 'Finalmente, DECLARA ter ciência do teor do art. 299 do Código Penal Brasileiro: "Art. 299 - Omitir, em documento público ou particular, declaração que dele devia constar, ou nele inserir ou fazer inserir declaração falsa ou diversa da que devia ser escrita, com o fim de prejudicar direito, criar obrigação ou alterar a verdade sobre fato juridicamente relevante: Pena - reclusão, de 1 (um) a 5 (cinco) anos, e multa, se o documento é público, e reclusão de 1 (um) a 3 (três) anos, e multa, se o documento é particular."')
+    add_blank(doc_vm, 1)
+    add_p(doc_vm, "Nestes termos, pede deferimento.", center=True)
+    add_blank(doc_vm, 1)
+    add_p(doc_vm, f"{mun}/MG, {data_ext}.", center=True)
+    add_assinatura(doc_vm, d.get("proprietario_nome") or "[PROPRIETÁRIO]", [f"CPF/CNPJ nº {d.get('proprietario_doc', '')}"])
+    add_blank(doc_vm, 1)
+    add_p(doc_vm, "* O reconhecimento de firma será dispensado se a declaração for assinada na presença do escrevente do registro de imóveis (arts. 861 e 877 do Prov. Conj. nº 93/2020).", italic=True, justify=False)
     docs_map["04_Declaracao_Valor_Real_Mercado_MG.docx"] = doc_vm
 
-    # 5. MEMORIAIS DESCRITIVOS DISTINTOS (1 ARQUIVO COMPLETO POR PARTE / GLEBA!)
+    # ── 5. MEMORIAIS DESCRITIVOS DISTINTOS (1 ARQUIVO COMPLETO POR PARTE/PARCELA!) ──
     for idx_p, parte in enumerate(partes, start=1):
         p_nome = (parte.get("nome") or f"Parte {idx_p}").strip()
-        p_area = float(parte.get("area_ha") or 0) or (float(d.get("area_memorial_ha") or 0) if len(partes) == 1 else 0.0)
+        p_area = float(parte.get("area_ha") or 0) or (area_tot if len(partes) == 1 else 0.0)
         p_perim = float(parte.get("perimetro_m") or 0) or (float(d.get("perimetro_m") or 0) if len(partes) == 1 else 0.0)
         p_sigef = parte.get("sigef") or (d.get("sigef_codigo") if len(partes) == 1 else "")
         p_texto = (parte.get("memorial_texto") or "").strip() or (d.get("memorial_texto") or "[Inserir descrição completa do perímetro]")
 
         doc_mem = novo_doc_timbrado()
-        titulo_mem = f"MEMORIAL DESCRITIVO — {p_nome.upper()}" if len(partes) >= 2 else "MEMORIAL DESCRITIVO"
-        add_p(doc_mem, titulo_mem, bold=True, center=True, size=13.5, color=RGB_PRIMARY, space_after=4)
-        add_p(doc_mem, f"Imóvel: {d.get('imovel_denominacao', '')}" + (f" ({p_nome})" if len(partes) >= 2 else "") + f" • {mat_txt} • Município: {mun}/MG • Comarca: {comarca}", bold=True, justify=False, space_after=4)
-        add_p(doc_mem, f"Proprietário(a): {d.get('proprietario_nome', '')} ({d.get('proprietario_doc', '')}) • INCRA: {d.get('incra_sncr', '')}" + (f" • SIGEF: {p_sigef}" if p_sigef else "") + f" • Área: {p_area:.4f} ha • Perímetro: {p_perim:.3f} m • Datum: SIRGAS 2000", justify=False, space_after=8)
+        add_p(doc_mem, "MEMORIAL DESCRITIVO", bold=True, center=True)
+        add_blank(doc_mem, 1)
+
+        imovel_hdr = f"{d.get('imovel_denominacao', '')}" + (f" — {p_nome}" if len(partes) >= 2 else "")
+        add_kv_line(doc_mem, "Imóvel: ", imovel_hdr)
+        add_kv_line(doc_mem, "Proprietário(a): ", f"{d.get('proprietario_nome', '')} — CPF/CNPJ: {d.get('proprietario_doc', '')}")
+        add_kv_line(doc_mem, "Natureza da Área: ", f"Particular — Código INCRA/SNCR: {d.get('incra_sncr', '')}")
+        add_kv_line(doc_mem, "Matrícula do imóvel: ", f"{mat_txt} — CNS: {d.get('cartorio_cns', '')}")
+        add_kv_line(doc_mem, "Município/UF: ", f"{mun}/MG — Cartório: CRI da Comarca de {comarca}")
+        add_kv_line(doc_mem, "Responsável Técnico(a): ", "MARCOS FRANCIEL FERNANDES DOS SANTOS")
+        add_kv_line(doc_mem, "Formação: ", "Engenheiro Civil — Conselho Profissional: CREA-MG 248849/D / RNP 141908491-7/MG")
+        add_kv_line(doc_mem, "Código de credenciamento: ", f"YIDB — Documento de RT: ART nº {d.get('art_numero', '')}" + (f" — SIGEF: {p_sigef}" if p_sigef else ""))
+        add_kv_line(doc_mem, "Sistema Geodésico de referência: ", "SIRGAS 2000")
+        add_kv_line(doc_mem, "Coordenadas: ", "Latitude, longitude e altitude geodésicas — Azimutes: Azimutes geodésicos")
+        add_blank(doc_mem, 1)
+
+        add_p(doc_mem, "DESCRIÇÃO DA PARCELA", bold=True, center=True)
+        if len(partes) >= 2:
+            add_p(doc_mem, p_nome, bold=True, center=True)
+        add_blank(doc_mem, 1)
+        add_kv_line(doc_mem, "Área (ha): ", f"{p_area:.4f} ha")
+        add_kv_line(doc_mem, "Perímetro (m): ", f"{p_perim:.3f} m")
+        add_blank(doc_mem, 1)
         add_p(doc_mem, p_texto)
-        add_p(doc_mem, "Atesto, sob as penas da lei, que efetuei pessoalmente, in loco, o levantamento da área e que os valores corretos dos azimutes, distâncias, coordenadas e identificações dos confrontantes são os apresentados na planta e neste memorial descritivo, respeitadas as divisas particulares e faixas de domínio público.", space_after=6)
-        add_p(doc_mem, f"{mun}/MG, {data_hoje}.", justify=False, space_after=8)
-        add_assinatura(doc_mem, "MARCOS FRANCIEL FERNANDES DOS SANTOS", rt_legenda)
-        add_assinatura(doc_mem, d.get("proprietario_nome") or "[PROPRIETÁRIO]", f"Proprietário(a) — CPF/CNPJ: {d.get('proprietario_doc', '')}")
+        add_blank(doc_mem, 1)
+
+        add_p(doc_mem, "RESPONSÁVEL TÉCNICO:", bold=True, justify=False)
+        add_p(doc_mem, "Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores corretos dos azimutes e distâncias e as identificações são os apresentados nesta planta e no memorial que o acompanha, e que a medição respeitou plenamente as divisas com as áreas particulares e faixas de domínio de imóveis públicos.")
+        add_blank(doc_mem, 1)
+        add_p(doc_mem, f"{mun} – MG, {data_ext}.", bold=True, center=True)
+        add_assinatura(doc_mem, "Marcos Franciel Fernandes dos Santos", ["Engenheiro Civil – CREA-MG 248849/D", f"ART nº {d.get('art_numero', '')}"])
+        add_blank(doc_mem, 1)
+
+        add_p(doc_mem, "PROPRIETÁRIO", bold=True, center=True)
+        add_p(doc_mem, "Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas nesta planta e nos memoriais que acompanham o presente. Declaramos ainda que não houve alteração nas divisas do imóvel registrado e que os direitos dos confrontantes foram respeitados.")
+        add_assinatura(doc_mem, d.get("proprietario_nome") or "[PROPRIETÁRIO]", [])
+        add_kv_line(doc_mem, "QUALIFICAÇÃO: ", f"{qual_prop} ({mat_txt}, CRI da Comarca de {comarca}).", justify=True)
+
+        if confs_priv:
+            add_blank(doc_mem, 1)
+            add_p(doc_mem, "CONFRONTANTES", bold=True, justify=False)
+            add_p(doc_mem, "Concordamos sob as penas da Lei (art. 299 do Código Penal) com as medidas apresentadas nesta planta e memoriais anexos nos espaços em que o referido imóvel faz confrontação com o imóvel de nossa propriedade. Declaramos ainda que não houve alteração nas divisas do imóvel registrado e que os nossos direitos como confrontantes foram respeitados.")
+            for c in confs_priv:
+                add_assinatura(doc_mem, c.get("representante_ou_inventariante") or c["nome"], [])
+                add_kv_line(doc_mem, "QUALIFICAÇÃO: ", f"{qualificacao_confrontante(c, comarca)}.", justify=True)
 
         if len(partes) >= 2:
             safe_p = re.sub(r"[^A-Za-z0-9]+", "_", p_nome)[:25]
@@ -1380,21 +1607,25 @@ def gerar_pacote_zip(d: dict, alertas: list[dict], gerar_pdf: bool = True) -> by
             fname_mem = "05_Memorial_Descritivo_Timbrado.docx"
         docs_map[fname_mem] = doc_mem
 
-    # 6. Checklist Anti-Devolutiva + Guia Completo de Documentos Físicos para Protocolo (MG)
+    # ── 6. CHECKLIST ANTI-DEVOLUTIVA + GUIA DE PROTOCOLO FÍSICO (MG) ──
     doc_chk = novo_doc_timbrado()
-    add_p(doc_chk, "CHECKLIST ANTI-DEVOLUTIVA E GUIA DE PROTOCOLO FÍSICO (CRI — MG)", bold=True, center=True, size=13, color=RGB_PRIMARY, space_after=6)
-    add_p(doc_chk, f"Projeto: {d.get('nome_projeto', '')} | Rito: {rito} | Comarca: {comarca} | Partes/Memoriais: {len(partes)}", bold=True, justify=False, space_after=6)
+    add_p(doc_chk, "CHECKLIST ANTI-DEVOLUTIVA E GUIA DE PROTOCOLO FÍSICO (CRI — MG)", bold=True, center=True)
+    add_blank(doc_chk, 1)
+    add_p(doc_chk, f"Projeto: {d.get('nome_projeto', '')} | Rito: {rito} | Comarca: {comarca} | Partes/Memoriais: {len(partes)}", bold=True, justify=False)
+    add_blank(doc_chk, 1)
 
-    add_p(doc_chk, "1. RESULTADO DA AUDITORIA AUTOMÁTICA", bold=True, color=RGB_PRIMARY, justify=False, space_after=4)
+    add_p(doc_chk, "1. RESULTADO DA AUDITORIA AUTOMÁTICA", bold=True, justify=False)
     for a in alertas:
         ico = {"VERDE": "[OK]", "AMARELO": "[ATENÇÃO]", "VERMELHO": "[BLOQUEIO]"}.get(a["nivel"], "")
-        add_p(doc_chk, f"{ico} {a['regra']}: {a['detalhe']}", justify=False, space_after=3)
+        add_p(doc_chk, f"{ico} {a['regra']}: {a['detalhe']}", justify=False)
+    add_blank(doc_chk, 1)
 
-    add_p(doc_chk, "2. GUIA DE DOCUMENTOS FÍSICOS E ORIENTAÇÕES PARA PROTOCOLO NO CARTÓRIO (MG)", bold=True, color=RGB_PRIMARY, justify=False, space_after=4)
+    add_p(doc_chk, "2. GUIA DE DOCUMENTOS FÍSICOS E ORIENTAÇÕES PARA PROTOCOLO NO CARTÓRIO (MG)", bold=True, justify=False)
     for bloco in guia_fisico:
-        add_p(doc_chk, bloco["titulo"], bold=True, color=RGB_ACCENT, justify=False, space_after=2)
+        add_blank(doc_chk, 1)
+        add_p(doc_chk, bloco["titulo"], bold=True, justify=False)
         for item in bloco["itens"]:
-            add_p(doc_chk, f"[  ] {item}", justify=True, space_after=3)
+            add_p(doc_chk, f"[  ] {item}", justify=True)
 
     docs_map["06_Checklist_e_Guia_Protocolo_CRI_MG.docx"] = doc_chk
 
@@ -1955,11 +2186,13 @@ elif st.session_state["etapa"] == 4:
         unsafe_allow_html=True,
     )
 
-    gerar_pdf = st.checkbox("Incluir também os arquivos em PDF prontos para impressão além do Word (.docx)", value=True)
+    c_opt1, c_opt2 = st.columns(2)
+    gerar_pdf = c_opt1.checkbox("Incluir também arquivos PDF prontos para impressão além do Word (.docx)", value=True)
+    gerar_ind = c_opt2.checkbox("Gerar também vias individuais de anuência (além da Declaração Coletiva)", value=True)
     if st.button("🚀 Gerar Pacote Completo para Protocolo (.zip)", type="primary", use_container_width=True):
         salvar_projeto(proj)
-        with st.spinner("Montando todas as peças e memoriais individuais no timbrado oficial..."):
-            zip_bytes = gerar_pacote_zip(proj, alertas_finais, gerar_pdf=gerar_pdf)
+        with st.spinner("Montando todas as peças em Times New Roman 11 (espaçamento 0/0 simples) no timbrado oficial..."):
+            zip_bytes = gerar_pacote_zip(proj, alertas_finais, gerar_pdf=gerar_pdf, gerar_anuencias_individuais=gerar_ind)
             nome_arq = re.sub(r"[^A-Za-z0-9]+", "_", f"Dossie_{proj.get('nome_projeto') or 'Facillyte'}") + ".zip"
             st.toast("Pacote gerado com sucesso!", icon="🎉")
             st.download_button(

@@ -788,6 +788,36 @@ def ler_docx_bytes(file_bytes: bytes) -> str:
     return "\n".join(partes)
 
 
+def ler_doc_bytes(file_bytes: bytes) -> str:
+    """Lê arquivos Word antigos (.doc / .DOC) e arquivos RTF salvos como .DOC (comum no TopoCAD/AutoCAD)."""
+    if not file_bytes:
+        return ""
+    if file_bytes.lstrip().startswith(b"{\\rtf"):
+        return ler_rtf_bytes(file_bytes)
+    if file_bytes[:2] == b"PK":
+        try:
+            return ler_docx_bytes(file_bytes)
+        except Exception:
+            pass
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            in_path = os.path.join(tmpdir, "entrada.doc")
+            with open(in_path, "wb") as fp:
+                fp.write(file_bytes)
+            res = subprocess.run(
+                ["libreoffice", "--headless", "--convert-to", "txt:Text", "--outdir", tmpdir, in_path],
+                timeout=30,
+                capture_output=True,
+            )
+            out_path = os.path.join(tmpdir, "entrada.txt")
+            if res.returncode == 0 and os.path.exists(out_path):
+                with open(out_path, "r", encoding="utf-8", errors="ignore") as fp:
+                    return fp.read().strip()
+    except Exception:
+        pass
+    return ""
+
+
 def ler_planilha_sigef(file_bytes: bytes, filename: str) -> str:
     engine = "odf" if filename.lower().endswith(".ods") else "openpyxl"
     try:
@@ -840,6 +870,10 @@ def preparar_partes_arquivos(arquivos_up: list, etiqueta: str) -> tuple[list, li
         mime_attr = (getattr(up, "type", "") or "").lower()
         if fname.endswith(".docx"):
             textos.append(f"=== [{etiqueta}] WORD: {nome_orig} ===\n{ler_docx_bytes(raw)}")
+        elif fname.endswith(".doc"):
+            txt_doc = ler_doc_bytes(raw)
+            if txt_doc:
+                textos.append(f"=== [{etiqueta}] WORD (.DOC): {nome_orig} ===\n{txt_doc}")
         elif fname.endswith(".rtf"):
             textos.append(f"=== [{etiqueta}] RTF (TopoCAD/AutoCAD): {nome_orig} ===\n{ler_rtf_bytes(raw)}")
         elif fname.endswith((".xlsx", ".ods")):
@@ -891,6 +925,7 @@ MODELOS_GEMINI_OPCOES = {
     "Gemini 4 Neon — Inteligência de Fronteira + Velocidade": "gemini-4-neon",
     "Gemini 4 Argon — Raciocínio Eficiente": "gemini-4-argon",
     "Gemini 3.8 Flash — Rápido com Thinking": "gemini-3.8-flash",
+    "Gemini 3.5 Flash-Lite — Alta Disponibilidade (Anti-503)": "gemini-3.5-flash-lite",
 }
 
 MODELOS_GEMINI_FALLBACK = [
@@ -899,6 +934,8 @@ MODELOS_GEMINI_FALLBACK = [
     "gemini-4-argon",
     "gemini-4-hydrogen",
     "gemini-3.8-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3-flash-preview",
 ]
 
 
@@ -919,7 +956,7 @@ def chamar_gemini_json(api_key: str, partes_binarias: list, prompt: str, modelo_
         "503", "UNAVAILABLE", "500", "504", "high demand", "overloaded", "not available",
     )
     for modelo in ordem:
-        for tentativa in range(2):
+        for tentativa in range(3):
             try:
                 resp = client.models.generate_content(
                     model=modelo,
@@ -931,8 +968,8 @@ def chamar_gemini_json(api_key: str, partes_binarias: list, prompt: str, modelo_
             except Exception as e:
                 ultimo_erro = e
                 err_s = str(e)
-                if any(k in err_s for k in ("503", "UNAVAILABLE", "high demand", "overloaded")) and tentativa == 0:
-                    time.sleep(2)
+                if any(k in err_s for k in ("503", "UNAVAILABLE", "high demand", "overloaded")) and tentativa < 2:
+                    time.sleep(2 * (tentativa + 1))
                     continue
                 if any(k in err_s for k in erros_recuperaveis):
                     break
@@ -1892,6 +1929,8 @@ def extrair_trecho_memorial_posse(arquivos_mem: list) -> str:
         txt = ""
         if fname.endswith(".docx"):
             txt = ler_docx_bytes(raw)
+        elif fname.endswith(".doc"):
+            txt = ler_doc_bytes(raw)
         elif fname.endswith(".rtf"):
             txt = ler_rtf_bytes(raw)
         elif fname.endswith(".txt"):
@@ -2371,9 +2410,9 @@ if st.session_state["modulo_ativo"] == "posse":
             )
             fotos_cam_posse = coletor_camera_celular("cam_mod_posse", "📷 Tirar foto dos documentos agora pelo celular")
         with c_up2:
-            st.markdown('<div class="fac-card fac-card-green"><h4>📐 2. Memorial Descritivo da Área</h4><p>Anexe o memorial (.docx, .rtf, .pdf ou .txt). Ele será inserido integralmente no corpo do Recibo e da Declaração de Posse.</p></div>', unsafe_allow_html=True)
+            st.markdown('<div class="fac-card fac-card-green"><h4>📐 2. Memorial Descritivo da Área</h4><p>Anexe o memorial (.doc, .docx, .rtf, .pdf ou .txt). Ele será inserido integralmente no corpo do Recibo e da Declaração de Posse.</p></div>', unsafe_allow_html=True)
             arq_mem_posse = st.file_uploader(
-                "Anexar Memorial Descritivo (.docx, .rtf, .pdf, .txt)",
+                "Anexar Memorial Descritivo (.doc, .docx, .rtf, .pdf, .txt)",
                 accept_multiple_files=True,
                 key="up_mem_posse",
                 label_visibility="collapsed",
@@ -2408,7 +2447,7 @@ if st.session_state["modulo_ativo"] == "posse":
                         st.rerun()
                     except Exception as e:
                         st.error(f"Erro na leitura: {e}")
-        if c_bt2.button("📐 Importar Só o Memorial (.docx/.rtf/.txt)", use_container_width=True):
+        if c_bt2.button("📐 Importar Só o Memorial (.doc/.docx/.rtf/.txt)", use_container_width=True):
             mem_lido = extrair_trecho_memorial_posse(list(arq_mem_posse or []))
             if mem_lido:
                 cp["memorial_descritivo"] = mem_lido
@@ -2417,7 +2456,7 @@ if st.session_state["modulo_ativo"] == "posse":
                 st.toast("Memorial descritivo importado com sucesso! Confira na aba 2.", icon="✅")
                 st.rerun()
             else:
-                st.warning("Anexe um memorial em .docx, .rtf ou .txt na caixa 2 para importar diretamente (ou use o botão de IA para PDF/foto).")
+                st.warning("Anexe um memorial em .doc, .docx, .rtf ou .txt na caixa 2 para importar diretamente (ou use o botão de IA para PDF/foto).")
 
     with tab_p2:
         cp["tipo_instrumento"] = st.selectbox(

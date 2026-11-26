@@ -442,6 +442,45 @@ def valor_por_extenso_brl(valor_str) -> str:
     return " e ".join(partes)
 
 
+def formatar_area_ha(area_ha: float) -> str:
+    """Formata hectares no padrão BR (ex.: 1,78 se centiares=0, ou 1,7825)."""
+    try:
+        v = float(area_ha or 0.0)
+    except Exception:
+        return "0,00"
+    total_ca = int(round(v * 10000))
+    if total_ca % 100 == 0:
+        return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{v:,.4f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def area_ha_por_extenso(area_ha: float) -> str:
+    """Converte área em hectares para extenso (ex.: 1.78 -> 'um hectare e setenta e oito ares')."""
+    try:
+        v = float(area_ha or 0.0)
+    except Exception:
+        return ""
+    if v <= 0:
+        return ""
+    total_ca = int(round(v * 10000))
+    ha = total_ca // 10000
+    resto = total_ca % 10000
+    ares = resto // 100
+    ca = resto % 100
+    partes = []
+    if ha > 0:
+        partes.append(f"{_inteiro_extenso(ha)} {'hectare' if ha == 1 else 'hectares'}")
+    if ares > 0:
+        partes.append(f"{_centena_extenso(ares)} {'are' if ares == 1 else 'ares'}")
+    if ca > 0:
+        partes.append(f"{_centena_extenso(ca)} {'centiare' if ca == 1 else 'centiares'}")
+    if not partes:
+        return ""
+    if len(partes) == 1:
+        return partes[0]
+    return ", ".join(partes[:-1]) + " e " + partes[-1]
+
+
 # ==============================================================================
 # BANCO DE DADOS SQLITE (PROJETOS)
 # ==============================================================================
@@ -543,19 +582,19 @@ TIPOS_INSTRUMENTO_POSSE = {
         "icone": "🤝",
         "exige_outorgante": True,
         "exige_valor": True,
-        "resumo": "Formaliza a compra e venda de posse rural entre vendedor e comprador, com quitação, confrontantes e testemunhas, pronto para firma reconhecida e apresentação no Sindicato Rural / INCRA.",
+        "resumo": "Recibo de compra e venda de posse rural no modelo enxuto validado, com memorial descritivo completo no corpo do documento, valor por extenso e testemunhas, pronto para Sindicato Rural / INCRA / ITR / CAR.",
     },
     "Instrumento Particular de Doação de Direitos Possessórios": {
         "icone": "🎁",
         "exige_outorgante": True,
         "exige_valor": False,
-        "resumo": "Formaliza a doação de área de posse (de pais para filhos, herdeiros ou terceiros), com anuência de cônjuges, descrição da área e testemunhas, em conformidade com o Código Civil.",
+        "resumo": "Recibo de doação de posse rural no modelo enxuto validado (pais para filhos, herdeiros ou terceiros), com memorial descritivo completo no corpo do documento e testemunhas, pronto para Sindicato Rural / INCRA / ITR / CAR.",
     },
     "Declaração de Posse (Sindicato Rural / INCRA / ITR / CAR)": {
         "icone": "📜",
         "exige_outorgante": False,
         "exige_valor": False,
-        "resumo": "Declaração formal de posse mansa, pacífica e contínua com qualificação completa, área, confrontantes e testemunhas, para embasar a Declaração do Sindicato Rural e abertura de CCIR, ITR e CAR.",
+        "resumo": "Declaração formal de posse mansa, pacífica e contínua no modelo enxuto, com memorial descritivo completo no corpo do documento e testemunhas, para instrução no Sindicato Rural, INCRA (CCIR), ITR e CAR.",
     },
 }
 
@@ -574,7 +613,7 @@ def novo_caso_posse(nome: str = "", tipo: str = None) -> dict:
         "outorgante_endereco": "",
         "outorgante_conjuge_nome": "",
         "outorgante_conjuge_cpf": "",
-        # Possuidor / Comprador / Donatário
+        # Possuidor / Comprador / Recebedor
         "possuidor_nome": "",
         "possuidor_cpf": "",
         "possuidor_rg": "",
@@ -593,11 +632,7 @@ def novo_caso_posse(nome: str = "", tipo: str = None) -> dict:
         "perimetro_m": 0.0,
         "tempo_posse_anos": "",
         "origem_posse": "posse mansa, pacífica, contínua e de boa-fé",
-        "confrontante_norte": "",
-        "confrontante_sul": "",
-        "confrontante_leste": "",
-        "confrontante_oeste": "",
-        "memorial_resumo": "",
+        "memorial_descritivo": "",
         # Valor e Pagamento
         "valor_num": "",
         "forma_pagamento": "pago integralmente neste ato, dando-se plena e geral quitação",
@@ -1840,14 +1875,55 @@ def gerar_pacote_zip(d: dict, alertas: list[dict], gerar_pdf: bool = True, gerar
 
 
 
-def extrair_dados_posse_ia(api_key: str, tipo_inst: str, arquivos_up: list, texto_livre: str, modelo_preferido: str = "gemini-4-carbon") -> dict:
+def extrair_trecho_memorial_posse(arquivos_mem: list) -> str:
+    """Extrai diretamente o texto corrido do memorial descritivo (.docx, .rtf, .txt) sem alterar coordenadas."""
+    for up in arquivos_mem or []:
+        if up is None:
+            continue
+        raw = up.getvalue() if hasattr(up, "getvalue") else up.read()
+        if hasattr(up, "seek"):
+            try:
+                up.seek(0)
+            except Exception:
+                pass
+        if not raw:
+            continue
+        fname = (getattr(up, "name", "") or "").lower()
+        txt = ""
+        if fname.endswith(".docx"):
+            txt = ler_docx_bytes(raw)
+        elif fname.endswith(".rtf"):
+            txt = ler_rtf_bytes(raw)
+        elif fname.endswith(".txt"):
+            txt = raw.decode("utf-8", errors="ignore")
+        if not txt.strip():
+            continue
+        # Procura o parágrafo principal que inicia a descrição do perímetro
+        m = re.search(r"(Inicia-se\s+a\s+descri[cç][aã]o[\s\S]+?ponto\s+inicial[^\n]*)", txt, flags=re.IGNORECASE)
+        if m:
+            return re.sub(r"\s+", " ", m.group(1)).strip()
+        m2 = re.search(r"(Inicia-se[\s\S]+)", txt, flags=re.IGNORECASE)
+        if m2:
+            # Remove rodapé de assinatura/data se houver
+            bloco = re.split(r"\n\s*(?:Pai Pedro|Porteirinha|E,\s*por\s+ser|Respons[aá]vel\s+T[eé]cnico|_{5,})", m2.group(1), maxsplit=1, flags=re.IGNORECASE)[0]
+            return re.sub(r"\s+", " ", bloco).strip()
+        return txt.strip()
+    return ""
+
+
+def extrair_dados_posse_ia(api_key: str, tipo_inst: str, arquivos_up: list, texto_livre: str, arquivos_memorial: list = None, modelo_preferido: str = "gemini-4-carbon") -> dict:
     bins, txts = preparar_partes_arquivos(arquivos_up, "DOCUMENTOS_POSSE")
+    if arquivos_memorial:
+        bins_m, txts_m = preparar_partes_arquivos(arquivos_memorial, "MEMORIAL_DESCRITIVO_POSSE")
+        bins.extend(bins_m)
+        txts.extend(txts_m)
     if texto_livre.strip():
         txts.append(f"=== INFORMAÇÕES / WHATSAPP / MEMORIAL ===\n{texto_livre.strip()}")
     prompt = f"""
 Você é um especialista em regularização fundiária rural em Minas Gerais (Facillyte Topografia).
 Instrumento escolhido: {tipo_inst}.
-Leia os documentos enviados (fotos de RG/CPF, certidões, recibos antigos, planta ou memorial) e extraia as informações para preencher o instrumento de posse.
+Leia os documentos enviados (fotos de RG/CPF, certidões, recibos antigos, planta e memorial descritivo) e extraia as informações para preencher o instrumento de posse.
+ATENÇÃO ESPECIAL AO MEMORIAL DESCRITIVO: No campo "memorial_descritivo", transcreva INTEGRALMENTE e LITERALMENTE o texto da descrição do perímetro (ex.: "Inicia-se a descrição deste perímetro no vértice... até o vértice..., ponto inicial da descrição deste perímetro de ... m."), mantendo todas as coordenadas N/E, altitudes, azimutes, distâncias e nomes de confrontantes exatamente como constam no memorial anexado, sem resumir nem omitir nenhum vértice.
 Retorne APENAS um JSON válido com estas chaves:
 {{
   "outorgante_nome": "",
@@ -1875,11 +1951,7 @@ Retorne APENAS um JSON válido com estas chaves:
   "perimetro_m": 0.0,
   "tempo_posse_anos": "",
   "origem_posse": "",
-  "confrontante_norte": "",
-  "confrontante_sul": "",
-  "confrontante_leste": "",
-  "confrontante_oeste": "",
-  "memorial_resumo": "",
+  "memorial_descritivo": "",
   "valor_num": "",
   "testemunha1_nome": "",
   "testemunha1_cpf": "",
@@ -1890,160 +1962,208 @@ Não invente dados ausentes; deixe "" ou 0.0.
 """
     if txts:
         prompt += "\n\nTEXTOS EXTRAÍDOS:\n" + "\n\n".join(txts)
-    return chamar_gemini_json(api_key, bins, prompt, modelo_preferido=modelo_preferido)
+    res = chamar_gemini_json(api_key, bins, prompt, modelo_preferido=modelo_preferido)
+    # Garante fidelidade literal do memorial se enviado em .docx/.rtf/.txt
+    mem_direto = extrair_trecho_memorial_posse(arquivos_memorial)
+    if mem_direto and len(mem_direto) >= len(str(res.get("memorial_descritivo") or "")):
+        res["memorial_descritivo"] = mem_direto
+    return res
 
 
-def _qual_pessoa_posse(nome, cpf, rg, ec, prof, end, conj_nome="", conj_cpf="") -> str:
-    p = [nome or "[NOME COMPLETO]"]
-    p.append("brasileiro(a)")
+def _add_runs_p(doc, runs_spec: list[tuple[str, bool]], justify=True, center=False, right=False, keep_with_next=False):
+    p = doc.add_paragraph()
+    _fmt_p(p, center=center, right=right, justify=justify, keep_with_next=keep_with_next)
+    for txt, is_bold in runs_spec:
+        if not txt:
+            continue
+        r = p.add_run(txt)
+        r.font.name = FONT_DOC
+        r.font.size = SIZE_DOC
+        r.font.bold = is_bold
+        r.font.color.rgb = RGBColor(0x00, 0x00, 0x00)
+    return p
+
+
+def _qual_posse_runs(nome, cpf, rg, ec, prof, end, conj_nome="", conj_cpf="") -> list[tuple[str, bool]]:
+    runs = [(nome or "[NOME COMPLETO]", True)]
+    detalhes = ["brasileiro(a)"]
     if ec:
-        p.append(ec)
+        detalhes.append(ec)
     if prof:
-        p.append(prof)
+        detalhes.append(prof)
     if rg:
-        p.append(f"portador(a) do RG nº {rg}")
+        detalhes.append(f"portador(a) da cédula de identidade nº {rg}")
     if cpf:
-        p.append(f"inscrito(a) no CPF sob o nº {cpf}")
+        detalhes.append(f"inscrito(a) no CPF sob o nº {cpf}")
     if conj_nome:
-        p.append(f"com anuência de seu(sua) cônjuge {conj_nome}" + (f" (CPF nº {conj_cpf})" if conj_cpf else ""))
+        detalhes.append(f"com anuência de seu(sua) cônjuge {conj_nome}" + (f" (CPF nº {conj_cpf})" if conj_cpf else ""))
     if end:
-        p.append(f"residente e domiciliado(a) em {end}")
-    return ", ".join(p)
+        detalhes.append(f"residente e domiciliado(a) em {end}")
+    runs.append((", " + ", ".join(detalhes), False))
+    return runs
+
+
+def _add_assinatura_recibo_centro(doc, papel: str, nome: str, cpf: str = ""):
+    add_blank(doc, 2)
+    add_p(doc, "________________________________________________________________________", center=True, justify=False, keep_with_next=True)
+    cpf_txt = f"   CPF: {cpf}" if cpf else ""
+    _add_runs_p(doc, [(f"{papel}: ", True), (f"{nome or '[NOME COMPLETO]'}{cpf_txt}", False)], justify=False, center=True)
+
+
+def _add_testemunha_recibo(doc, numero: int, nome: str = "", cpf: str = ""):
+    add_blank(doc, 2)
+    extra = ""
+    if nome:
+        extra = f": {nome}" + (f" — CPF: {cpf}" if cpf else "")
+    _add_runs_p(doc, [(f"TESTEMUNHA {numero}", True), (extra, False)], justify=False, keep_with_next=True)
+    add_p(doc, "________________________________________________________________________", justify=False)
 
 
 def gerar_pacote_posse_zip(p: dict, gerar_pdf: bool = True) -> bytes:
-    """Gera o instrumento de posse escolhido + Declaração de Posse para Sindicato/INCRA + Guia CCIR/ITR/CAR em Times New Roman 11 (0/0 simples)."""
+    """Gera o instrumento de posse escolhido no modelo enxuto validado (com memorial descritivo inserido no corpo) + Declaração de Posse + Guia Sindicato/INCRA/ITR/CAR em Times New Roman 11 (0/0 simples)."""
     data_ext = data_extenso_pt()
     mun = p.get("imovel_municipio") or "Pai Pedro"
     comarca = p.get("comarca_uf") or "Porteirinha/MG"
     tipo = p.get("tipo_instrumento")
     area_ha = float(p.get("area_ha") or 0)
-    perim_m = float(p.get("perimetro_m") or 0)
+    area_fmt = formatar_area_ha(area_ha)
+    area_ext = area_ha_por_extenso(area_ha)
+    area_ext_par = f" ({area_ext})" if area_ext else ""
 
     val_num = parse_brl(p.get("valor_num"))
     val_fmt = formatar_brl(val_num) if val_num is not None else (p.get("valor_num") or "")
     val_ext = valor_por_extenso_brl(val_fmt)
 
-    qual_out = _qual_pessoa_posse(
+    qual_out_runs = _qual_posse_runs(
         p.get("outorgante_nome"), p.get("outorgante_cpf"), p.get("outorgante_rg"),
         p.get("outorgante_estado_civil"), p.get("outorgante_prof"), p.get("outorgante_endereco"),
         p.get("outorgante_conjuge_nome"), p.get("outorgante_conjuge_cpf"),
     )
-    qual_pos = _qual_pessoa_posse(
+    qual_pos_runs = _qual_posse_runs(
         p.get("possuidor_nome"), p.get("possuidor_cpf"), p.get("possuidor_rg"),
         p.get("possuidor_estado_civil"), p.get("possuidor_prof"), p.get("possuidor_endereco"),
         p.get("possuidor_conjuge_nome"), p.get("possuidor_conjuge_cpf"),
     )
 
-    local_imovel = f"{p.get('imovel_denominacao') or '[Denominação do Imóvel]'}"
-    if p.get("imovel_comunidade"):
-        local_imovel += f", lugar/comunidade {p['imovel_comunidade']}"
-    local_imovel += f", zona rural do município de {mun}/MG (Comarca de {comarca})"
+    denom_txt = f" denominada {p['imovel_denominacao'].strip()}," if (p.get("imovel_denominacao") or "").strip() else ""
+    comun_txt = f" situada na comunidade {p['imovel_comunidade'].strip()}," if (p.get("imovel_comunidade") or "").strip() else " situada na"
+    local_resumo = f"{(p.get('imovel_denominacao') or '').strip() or 'Área Rural'}"
+    if (p.get("imovel_comunidade") or "").strip():
+        local_resumo += f" — Comunidade {p['imovel_comunidade'].strip()}"
+    local_resumo += f", {mun}/MG"
 
-    confs_linha = (
-        f"Norte: {p.get('confrontante_norte') or '[informar]'}; "
-        f"Sul: {p.get('confrontante_sul') or '[informar]'}; "
-        f"Leste: {p.get('confrontante_leste') or '[informar]'}; "
-        f"Oeste: {p.get('confrontante_oeste') or '[informar]'}."
-    )
+    memorial_txt = (p.get("memorial_descritivo") or p.get("memorial_resumo") or "").strip()
+    if not memorial_txt:
+        memorial_txt = "[Inserir aqui o texto completo do Memorial Descritivo georreferenciado da parcela]"
 
     docs_map = {}
 
-    # ── 1. INSTRUMENTO PRINCIPAL CONFORME A SITUAÇÃO ──
+    # ── 1. INSTRUMENTO PRINCIPAL NO MODELO ENXUTO VALIDADO (COM MEMORIAL NO CORPO) ──
     if tipo == "Recibo de Compra e Venda de Direitos Possessórios":
         doc1 = novo_doc_timbrado()
-        add_p(doc1, "RECIBO E INSTRUMENTO PARTICULAR DE COMPRA E VENDA DE DIREITOS POSSESSÓRIOS", bold=True, underline=True, center=True)
+        add_p(doc1, "RECIBO DE COMPRA E VENDA", bold=True, center=True)
         add_blank(doc1, 1)
-        add_p(doc1, f"Pelo presente instrumento particular, celebrado com boa-fé e pleno acordo entre as partes, nos termos dos arts. 1.196, 1.206 e 1.207 do Código Civil Brasileiro:")
+        val_trecho = f"R$ {val_fmt}" + (f" ({val_ext})" if val_ext else "")
+        pgto_txt = (p.get("forma_pagamento") or "pago integralmente neste ato, dando-se plena e geral quitação").strip()
+        runs = [("Eu, ", False)] + qual_out_runs + [
+            (", ", False),
+            ("DECLARO", True),
+            (" que vendi uma área de terras rural, medindo ", False),
+            (f"{area_fmt} hectares", True),
+            (f"{area_ext_par}, para ", False),
+        ] + qual_pos_runs + [
+            (", pelo valor ajustado de ", False),
+            (val_trecho, True),
+            (f", {pgto_txt}. Referente à venda dos direitos possessórios de uma área de terras rural{denom_txt} medindo ", False),
+            (f"{area_fmt} hectares", True),
+            (f"{area_ext_par},{comun_txt} zona rural do Município de {mun}-MG, com a seguinte descrição e confrontações:", False),
+        ]
+        _add_runs_p(doc1, runs, justify=True)
         add_blank(doc1, 1)
-        add_kv_line(doc1, "VENDEDOR(A) / CEDENTE: ", f"{qual_out}.", justify=True)
+        add_p(doc1, memorial_txt, justify=True)
         add_blank(doc1, 1)
-        add_kv_line(doc1, "COMPRADOR(A) / CESSIONÁRIO(A): ", f"{qual_pos}.", justify=True)
+        add_p(
+            doc1,
+            "E, por ser expressão da verdade, firmo o presente recibo de compra e venda, para fins de cadastro e regularização junto ao Sindicato Rural, INCRA (CCIR), Receita Federal (ITR) e CAR, em duas vias de igual teor e forma, na presença das testemunhas abaixo.",
+            justify=True,
+        )
         add_blank(doc1, 1)
-        add_p(doc1, f"1. DO OBJETO: O(A) Vendedor(a) declara ser legítimo(a) possuidor(a), de forma mansa, pacífica, contínua e sem oposição, do imóvel rural de posse denominado {local_imovel}, com área total aproximada/levantada de {area_ha:.4f} ha e perímetro de {perim_m:.3f} m, com as seguintes confrontações: {confs_linha}")
-        if (p.get("memorial_resumo") or "").strip():
-            add_blank(doc1, 1)
-            add_p(doc1, f"Descrição técnica / planta anexa: {p['memorial_resumo'].strip()}")
-        add_blank(doc1, 1)
-        add_p(doc1, f"2. DO VALOR E QUITAÇÃO: Pelo presente ato, o(a) Vendedor(a) transfere definitivamente ao(à) Comprador(a) todos os direitos possessórios, benfeitorias e acessões sobre a referida área rural, pelo valor ajustado de R$ {val_fmt} ({val_ext}), {p.get('forma_pagamento') or 'pago integralmente neste ato, dando-se plena e geral quitação'}.")
-        add_blank(doc1, 1)
-        add_p(doc1, "3. DA TRANSMISSÃO DA POSSE E CADASTROS RURAIS: A posse é transmitida neste ato, livre e desembaraçada de litígios ou invasões, somando-se o tempo de posse anterior ao do(a) Comprador(a) (art. 1.207 do Código Civil), ficando o(a) Comprador(a) autorizado(a) a promover o cadastramento da área junto ao Sindicato Rural, INCRA/SNCR (CCIR), Receita Federal (CIB/ITR), CAR e futura regularização fundiária.")
-        add_blank(doc1, 1)
-        add_p(doc1, f"E por estarem justos e acordados, assinam o presente em 2 (duas) vias de igual teor, na presença de 2 (duas) testemunhas, para que produza seus efeitos legais.")
-        add_blank(doc1, 1)
-        add_p(doc1, f"{mun}/MG, {data_ext}.", center=True)
-        add_assinatura(doc1, p.get("outorgante_nome") or "[VENDEDOR(A)]", [f"Vendedor(a) — CPF nº {p.get('outorgante_cpf', '')}"])
+        add_p(doc1, f"{mun}-MG, {data_ext}.", right=True, justify=False)
+        _add_assinatura_recibo_centro(doc1, "VENDEDOR(A)", p.get("outorgante_nome") or "[VENDEDOR(A)]", p.get("outorgante_cpf", ""))
         if p.get("outorgante_conjuge_nome"):
-            add_assinatura(doc1, p["outorgante_conjuge_nome"], [f"Cônjuge do(a) Vendedor(a) — CPF nº {p.get('outorgante_conjuge_cpf', '')}"])
-        add_assinatura(doc1, p.get("possuidor_nome") or "[COMPRADOR(A)]", [f"Comprador(a) — CPF nº {p.get('possuidor_cpf', '')}"])
+            _add_assinatura_recibo_centro(doc1, "CÔNJUGE ANUENTE", p["outorgante_conjuge_nome"], p.get("outorgante_conjuge_cpf", ""))
+        _add_assinatura_recibo_centro(doc1, "COMPRADOR(A)", p.get("possuidor_nome") or "[COMPRADOR(A)]", p.get("possuidor_cpf", ""))
         if p.get("possuidor_conjuge_nome"):
-            add_assinatura(doc1, p["possuidor_conjuge_nome"], [f"Cônjuge do(a) Comprador(a) — CPF nº {p.get('possuidor_conjuge_cpf', '')}"])
-        add_blank(doc1, 1)
-        add_p(doc1, "TESTEMUNHAS:", bold=True, justify=False)
-        add_assinatura(doc1, p.get("testemunha1_nome") or "Testemunha 1", [f"CPF nº {p.get('testemunha1_cpf') or '____________________'}"], left=True)
-        add_assinatura(doc1, p.get("testemunha2_nome") or "Testemunha 2", [f"CPF nº {p.get('testemunha2_cpf') or '____________________'}"], left=True)
+            _add_assinatura_recibo_centro(doc1, "CÔNJUGE DO(A) COMPRADOR(A)", p["possuidor_conjuge_nome"], p.get("possuidor_conjuge_cpf", ""))
+        _add_testemunha_recibo(doc1, 1, p.get("testemunha1_nome", ""), p.get("testemunha1_cpf", ""))
+        _add_testemunha_recibo(doc1, 2, p.get("testemunha2_nome", ""), p.get("testemunha2_cpf", ""))
         docs_map["01_Recibo_Compra_e_Venda_Posse.docx"] = doc1
 
     elif tipo == "Instrumento Particular de Doação de Direitos Possessórios":
         doc1 = novo_doc_timbrado()
-        add_p(doc1, "INSTRUMENTO PARTICULAR DE DOAÇÃO DE DIREITOS POSSESSÓRIOS", bold=True, underline=True, center=True)
+        add_p(doc1, "RECIBO DE DOAÇÃO", bold=True, center=True)
         add_blank(doc1, 1)
-        add_p(doc1, "Pelo presente instrumento particular de doação de posse rural, celebrado de livre e espontânea vontade entre as partes, com fundamento nos arts. 538, 1.196, 1.206 e 1.207 do Código Civil Brasileiro:")
+        par_txt = f" ({p['parentesco_doacao'].strip()})" if (p.get("parentesco_doacao") or "").strip() else ""
+        val_est_txt = f", atribuindo-se para fins cadastrais o valor estimado de R$ {val_fmt} ({val_ext})" if val_fmt else ""
+        runs = [("Eu, ", False)] + qual_out_runs + [
+            (", ", False),
+            ("DECLARO", True),
+            (" que doei gratuitamente uma área de terras rural, medindo ", False),
+            (f"{area_fmt} hectares", True),
+            (f"{area_ext_par}, para ", False),
+        ] + qual_pos_runs + [
+            (f"{par_txt}. Referente à doação dos direitos possessórios que fiz de uma área de terras rural{denom_txt} medindo ", False),
+            (f"{area_fmt} hectares", True),
+            (f"{area_ext_par}{val_est_txt},{comun_txt} zona rural do Município de {mun}-MG, com a seguinte descrição e confrontações:", False),
+        ]
+        _add_runs_p(doc1, runs, justify=True)
         add_blank(doc1, 1)
-        add_kv_line(doc1, "DOADOR(A): ", f"{qual_out}.", justify=True)
+        add_p(doc1, memorial_txt, justify=True)
         add_blank(doc1, 1)
-        par_txt = f" ({p['parentesco_doacao']})" if p.get("parentesco_doacao") else ""
-        add_kv_line(doc1, "DONATÁRIO(A): ", f"{qual_pos}{par_txt}.", justify=True)
+        add_p(
+            doc1,
+            "E, por ser expressão da verdade, firmo o presente recibo de doação, para fins de cadastro e regularização junto ao Sindicato Rural, INCRA (CCIR), Receita Federal (ITR) e CAR, em duas vias de igual teor e forma, na presença das testemunhas abaixo.",
+            justify=True,
+        )
         add_blank(doc1, 1)
-        add_p(doc1, f"1. DO OBJETO DA DOAÇÃO: O(A) Doador(a) declara exercer posse mansa, pacífica, contínua e sem oposição sobre a parcela de imóvel rural denominada {local_imovel}, com área de {area_ha:.4f} ha e perímetro de {perim_m:.3f} m, confrontando ao {confs_linha}")
-        if (p.get("memorial_resumo") or "").strip():
-            add_blank(doc1, 1)
-            add_p(doc1, f"Descrição técnica / planta anexa: {p['memorial_resumo'].strip()}")
-        add_blank(doc1, 1)
-        val_est_txt = f", atribuindo-se à posse, apenas para fins estimativos/cadastrais, o valor de R$ {val_fmt} ({val_ext})" if val_fmt else ""
-        add_p(doc1, f"2. DA TRANSFERÊNCIA GRATUITA DA POSSE: Por mera liberalidade e de forma inteiramente gratuita, o(a) Doador(a) cede e transfere definitivamente ao(à) Donatário(a) todos os direitos possessórios e benfeitorias existentes na área descrita{val_est_txt}, transmitindo desde já a posse mansa e pacífica para que o(a) Donatário(a) dela use, goze e frua livremente.")
-        add_blank(doc1, 1)
-        add_p(doc1, "3. DA SOMA DE POSSE E CADASTROS RURAIS: O tempo de posse anterior soma-se ao do(a) Donatário(a) (art. 1.207 do Código Civil), ficando o(a) Donatário(a) autorizado(a) a providenciar a Declaração de Posse junto ao Sindicato Rural, bem como o cadastramento da parcela no INCRA/SNCR (CCIR), Receita Federal (CIB/ITR), Cadastro Ambiental Rural (CAR) e eventual regularização fundiária futura.")
-        add_blank(doc1, 1)
-        add_p(doc1, "4. ACEITAÇÃO: O(A) Donatário(a) declara aceitar a presente doação de direitos possessórios nos termos acima, ciente das divisas e confrontações da área.")
-        add_blank(doc1, 1)
-        add_p(doc1, f"{mun}/MG, {data_ext}.", center=True)
-        add_assinatura(doc1, p.get("outorgante_nome") or "[DOADOR(A)]", [f"Doador(a) — CPF nº {p.get('outorgante_cpf', '')}"])
+        add_p(doc1, f"{mun}-MG, {data_ext}.", right=True, justify=False)
+        _add_assinatura_recibo_centro(doc1, "DOADOR(A)", p.get("outorgante_nome") or "[DOADOR(A)]", p.get("outorgante_cpf", ""))
         if p.get("outorgante_conjuge_nome"):
-            add_assinatura(doc1, p["outorgante_conjuge_nome"], [f"Cônjuge Anuente — CPF nº {p.get('outorgante_conjuge_cpf', '')}"])
-        add_assinatura(doc1, p.get("possuidor_nome") or "[DONATÁRIO(A)]", [f"Donatário(a) — CPF nº {p.get('possuidor_cpf', '')}"])
-        add_blank(doc1, 1)
-        add_p(doc1, "TESTEMUNHAS:", bold=True, justify=False)
-        add_assinatura(doc1, p.get("testemunha1_nome") or "Testemunha 1", [f"CPF nº {p.get('testemunha1_cpf') or '____________________'}"], left=True)
-        add_assinatura(doc1, p.get("testemunha2_nome") or "Testemunha 2", [f"CPF nº {p.get('testemunha2_cpf') or '____________________'}"], left=True)
-        docs_map["01_Instrumento_Doacao_Posse.docx"] = doc1
+            _add_assinatura_recibo_centro(doc1, "CÔNJUGE ANUENTE", p["outorgante_conjuge_nome"], p.get("outorgante_conjuge_cpf", ""))
+        _add_assinatura_recibo_centro(doc1, "RECEBEDOR(A)", p.get("possuidor_nome") or "[RECEBEDOR(A)]", p.get("possuidor_cpf", ""))
+        _add_testemunha_recibo(doc1, 1, p.get("testemunha1_nome", ""), p.get("testemunha1_cpf", ""))
+        _add_testemunha_recibo(doc1, 2, p.get("testemunha2_nome", ""), p.get("testemunha2_cpf", ""))
+        docs_map["01_Recibo_de_Doacao_Posse.docx"] = doc1
 
-    # ── 2. DECLARAÇÃO DE POSSE (PARA INSTRUÇÃO NO SINDICATO RURAL / EMATER / INCRA / ITR / CAR) ──
+    # ── 2. DECLARAÇÃO DE POSSE (MESMO MODELO ENXUTO + MEMORIAL DESCRITIVO NO CORPO) ──
     doc_dp = novo_doc_timbrado()
-    add_p(doc_dp, "DECLARAÇÃO DE POSSE DE IMÓVEL RURAL", bold=True, underline=True, center=True)
-    add_p(doc_dp, "(Para fins de cadastro no Sindicato Rural, INCRA/SNCR – CCIR, Receita Federal – ITR/CIB e CAR)", italic=True, center=True)
+    add_p(doc_dp, "DECLARAÇÃO DE POSSE", bold=True, center=True)
+    add_blank(doc_dp, 1)
+    tempo_txt = f" há aproximadamente {p['tempo_posse_anos'].strip()} anos," if (p.get("tempo_posse_anos") or "").strip() else ""
+    origem_txt = (p.get("origem_posse") or "posse mansa, pacífica, contínua e de boa-fé").strip()
+    runs_dp = [("Eu, ", False)] + qual_pos_runs + [
+        (", ", False),
+        ("DECLARO", True),
+        (f", sob as penas da lei civil e criminal (art. 299 do Código Penal Brasileiro), que detenho e exerço posse mansa, pacífica, contínua, de boa-fé e sem qualquer oposição{tempo_txt} decorrente de {origem_txt}, sobre uma área de terras rural{denom_txt} medindo ", False),
+        (f"{area_fmt} hectares", True),
+        (f"{area_ext_par},{comun_txt} zona rural do Município de {mun}-MG, com a seguinte descrição e confrontações:", False),
+    ]
+    _add_runs_p(doc_dp, runs_dp, justify=True)
+    add_blank(doc_dp, 1)
+    add_p(doc_dp, memorial_txt, justify=True)
     add_blank(doc_dp, 1)
     add_p(
         doc_dp,
-        f"Eu, {qual_pos}, DECLARO, sob as penas da lei civil e criminal (art. 299 do Código Penal Brasileiro), que detenho e exerço a posse mansa, pacífica, contínua, de boa-fé e sem qualquer oposição sobre o imóvel rural denominado {local_imovel}, com área de {area_ha:.4f} ha e perímetro de {perim_m:.3f} m, conforme planta e memorial descritivo elaborados pelo Engenheiro Civil Marcos Franciel Fernandes dos Santos (CREA-MG 248849/D, credenciado INCRA YIDB).",
+        "E, por ser expressão da verdade, firmo a presente declaração de posse, para fins de emissão de Declaração de Posse junto ao Sindicato Rural e regularização cadastral no INCRA/SNCR (CCIR), Receita Federal (ITR/CIB) e CAR (Lei nº 4.504/1964, Lei nº 9.393/1996 e Lei nº 10.267/2001), em duas vias de igual teor e forma, na presença das testemunhas abaixo.",
+        justify=True,
     )
     add_blank(doc_dp, 1)
-    tempo_txt = f" há aproximadamente {p['tempo_posse_anos']} anos," if p.get("tempo_posse_anos") else ""
-    origem_txt = p.get("origem_posse") or "ocupação mansa, pacífica e de boa-fé"
-    add_p(doc_dp, f"DECLARO que a referida posse é exercida{tempo_txt} decorrente de {origem_txt}, apresentando as seguintes confrontações atuais: {confs_linha}")
-    add_blank(doc_dp, 1)
-    add_p(doc_dp, "DECLARO ainda que sobre a área descrita não existe disputa judicial ou extrajudicial com vizinhos confrontantes, e que a presente declaração é firmada para instruir a emissão de Declaração de Posse junto ao Sindicato Rural / entidade competente, bem como o cadastramento regular do imóvel no INCRA/SNCR (CCIR), Receita Federal (CAFIR/CIB/ITR) e Cadastro Ambiental Rural (CAR), nos termos da Lei nº 4.504/1964, Lei nº 9.393/1996 e Lei nº 10.267/2001.")
-    add_blank(doc_dp, 1)
-    add_p(doc_dp, f"Por ser a expressão da verdade, firmo a presente na presença das testemunhas e confrontantes abaixo identificados.")
-    add_blank(doc_dp, 1)
-    add_p(doc_dp, f"{mun}/MG, {data_ext}.", center=True)
-    add_assinatura(doc_dp, p.get("possuidor_nome") or "[POSSUIDOR(A)]", [f"Declarante / Possuidor(a) — CPF nº {p.get('possuidor_cpf', '')}"])
+    add_p(doc_dp, f"{mun}-MG, {data_ext}.", right=True, justify=False)
+    _add_assinatura_recibo_centro(doc_dp, "DECLARANTE / POSSUIDOR(A)", p.get("possuidor_nome") or "[POSSUIDOR(A)]", p.get("possuidor_cpf", ""))
     if p.get("possuidor_conjuge_nome"):
-        add_assinatura(doc_dp, p["possuidor_conjuge_nome"], [f"Cônjuge — CPF nº {p.get('possuidor_conjuge_cpf', '')}"])
-    add_blank(doc_dp, 1)
-    add_p(doc_dp, "ANUÊNCIA DOS CONFRONTANTES / TESTEMUNHAS DE POSSE:", bold=True, justify=False)
-    add_assinatura(doc_dp, p.get("testemunha1_nome") or "Testemunha / Confrontante 1", [f"CPF nº {p.get('testemunha1_cpf') or '____________________'}"], left=True)
-    add_assinatura(doc_dp, p.get("testemunha2_nome") or "Testemunha / Confrontante 2", [f"CPF nº {p.get('testemunha2_cpf') or '____________________'}"], left=True)
+        _add_assinatura_recibo_centro(doc_dp, "CÔNJUGE", p["possuidor_conjuge_nome"], p.get("possuidor_conjuge_cpf", ""))
+    _add_testemunha_recibo(doc_dp, 1, p.get("testemunha1_nome", ""), p.get("testemunha1_cpf", ""))
+    _add_testemunha_recibo(doc_dp, 2, p.get("testemunha2_nome", ""), p.get("testemunha2_cpf", ""))
 
     nome_dp = "01_Declaracao_de_Posse_Sindicato_INCRA.docx" if tipo == "Declaração de Posse (Sindicato Rural / INCRA / ITR / CAR)" else "02_Declaracao_de_Posse_para_Sindicato_INCRA.docx"
     docs_map[nome_dp] = doc_dp
@@ -2053,11 +2173,11 @@ def gerar_pacote_posse_zip(p: dict, gerar_pdf: bool = True) -> bytes:
     add_p(doc_guia, "ORIENTAÇÃO PRÁTICA PARA O CLIENTE — REGULARIZAÇÃO DE POSSE RURAL (MG)", bold=True, underline=True, center=True)
     add_p(doc_guia, "Passo a passo para Sindicato Rural, INCRA (CCIR), Receita Federal (ITR/CIB) e CAR", italic=True, center=True)
     add_blank(doc_guia, 1)
-    add_p(doc_guia, f"Cliente: {p.get('possuidor_nome') or '[Possuidor]'} | Imóvel: {local_imovel} | Área: {area_ha:.4f} ha", bold=True, justify=False)
+    add_p(doc_guia, f"Cliente: {p.get('possuidor_nome') or '[Possuidor]'} | Imóvel: {local_resumo} | Área: {area_fmt} ha{area_ext_par}", bold=True, justify=False)
     add_blank(doc_guia, 1)
     passos = [
-        ("Passo 1 — Assinaturas e Reconhecimento de Firma:", "Todas as partes (vendedor/doador, comprador/possuidor, cônjuges e 2 testemunhas) devem assinar os documentos anexos e reconhecer firma em Cartório de Notas."),
-        ("Passo 2 — Certidão Negativa no Cartório de Registro de Imóveis (Livro 4):", "Solicitar no Cartório de Registro de Imóveis da Comarca a Certidão em Relatório do Livro 04 (Indicador Real) com efeito de certidão negativa de propriedade/matrícula — documento exigido pelo INCRA (normas SNCR/Sistema FAEMG) nos casos de posse por simples ocupação."),
+        ("Passo 1 — Assinaturas e Reconhecimento de Firma:", "Todas as partes (vendedor/doador, comprador/recebedor/possuidor, cônjuges e 2 testemunhas) devem assinar os documentos anexos e reconhecer firma em Cartório de Notas."),
+        ("Passo 2 — Certidão Negativa no Cartório de Registro de Imóveis (Livro 4):", f"Solicitar no Cartório de Registro de Imóveis da Comarca de {comarca} a Certidão em Relatório do Livro 04 (Indicador Real) com efeito de certidão negativa de propriedade/matrícula — documento exigido pelo INCRA (normas SNCR/Sistema FAEMG) nos casos de posse por simples ocupação."),
         ("Passo 3 — Declaração de Posse no Sindicato Rural / EMATER / Prefeitura:", "Levar este instrumento (com firma reconhecida), a Planta e o Memorial Descritivo da Facillyte Topografia, RG/CPF e comprovante de residência até o Sindicato Rural (ou EMATER/UMC) para emissão da Declaração de Posse institucional."),
         ("Passo 4 — Cadastro no INCRA / SNCR (Emissão do CCIR):", "Protocolar no INCRA ou na Unidade Municipal de Cadastramento (UMC) a Declaração de Posse do Sindicato + Certidão Negativa do CRI + Planta/Memorial + documentos pessoais para gerar o código SNCR e emitir o CCIR."),
         ("Passo 5 — Receita Federal (CAFIR / CIB / ITR) e CAR:", "Com o código SNCR/CCIR em mãos, vincular o imóvel no CAFIR (Cadastro Rural / Receita Federal) para obter o CIB/NIRF e entregar a DITR anualmente (mesmo se isento). Com a planta georreferenciada (shapefile/SIRGAS 2000) da Facillyte, realizar o cadastro no CAR (SICAR/MG)."),
@@ -2240,35 +2360,64 @@ if st.session_state["modulo_ativo"] == "posse":
     ])
 
     with tab_p1:
-        st.markdown('<div class="fac-card"><h4>📎 Envie RG, CPF, certidões, recibo antigo, planta ou memorial</h4><p>Funciona no computador e no celular (galeria ou câmera direta).</p></div>', unsafe_allow_html=True)
-        arq_posse = st.file_uploader(
-            "Anexar documentos ou fotos do celular",
-            accept_multiple_files=True,
-            key="up_mod_posse",
-            label_visibility="collapsed",
-        )
-        fotos_cam_posse = coletor_camera_celular("cam_mod_posse", "📷 Tirar foto dos documentos agora pelo celular")
-        txt_posse = st.text_area("Ou cole aqui informações do WhatsApp / memorial descritivo", height=110, key="txt_mod_posse")
+        c_up1, c_up2 = st.columns(2)
+        with c_up1:
+            st.markdown('<div class="fac-card"><h4>📎 1. Documentos Pessoais / Fotos</h4><p>RG, CPF, certidões, recibo antigo ou fotos tiradas no celular.</p></div>', unsafe_allow_html=True)
+            arq_posse = st.file_uploader(
+                "Anexar documentos pessoais ou fotos do celular",
+                accept_multiple_files=True,
+                key="up_mod_posse",
+                label_visibility="collapsed",
+            )
+            fotos_cam_posse = coletor_camera_celular("cam_mod_posse", "📷 Tirar foto dos documentos agora pelo celular")
+        with c_up2:
+            st.markdown('<div class="fac-card fac-card-green"><h4>📐 2. Memorial Descritivo da Área</h4><p>Anexe o memorial (.docx, .rtf, .pdf ou .txt). Ele será inserido integralmente no corpo do Recibo e da Declaração de Posse.</p></div>', unsafe_allow_html=True)
+            arq_mem_posse = st.file_uploader(
+                "Anexar Memorial Descritivo (.docx, .rtf, .pdf, .txt)",
+                accept_multiple_files=True,
+                key="up_mem_posse",
+                label_visibility="collapsed",
+            )
+        txt_posse = st.text_area("Ou cole aqui informações do WhatsApp / texto do memorial descritivo", height=110, key="txt_mod_posse")
 
-        if st.button("🤖 Ler Documentos e Preencher Automaticamente", type="primary", use_container_width=True):
+        c_bt1, c_bt2 = st.columns([2, 1])
+        if c_bt1.button("🤖 Ler Documentos + Memorial e Preencher Automaticamente", type="primary", use_container_width=True):
             todos_arq = list(arq_posse or []) + list(fotos_cam_posse or [])
+            mems_arq = list(arq_mem_posse or [])
             if not api_key:
                 st.error("Informe a chave GEMINI_API_KEY na barra lateral.")
-            elif not todos_arq and not txt_posse.strip():
-                st.warning("Anexe uma foto/documento ou cole o texto antes de extrair.")
+            elif not todos_arq and not mems_arq and not txt_posse.strip():
+                st.warning("Anexe uma foto/documento, o memorial descritivo ou cole o texto antes de extrair.")
             else:
-                with st.spinner("Lendo fotos e documentos com IA..."):
+                with st.spinner("Lendo documentos e memorial descritivo com IA..."):
                     try:
-                        ext_p = extrair_dados_posse_ia(api_key, cp["tipo_instrumento"], todos_arq, txt_posse, modelo_preferido=modelo_selecionado)
+                        ext_p = extrair_dados_posse_ia(
+                            api_key,
+                            cp["tipo_instrumento"],
+                            todos_arq,
+                            txt_posse,
+                            arquivos_memorial=mems_arq,
+                            modelo_preferido=modelo_selecionado,
+                        )
                         for k, v in ext_p.items():
                             if v not in ("", None, 0, 0.0):
                                 cp[k] = v
                         salvar_caso_posse(cp)
                         st.session_state["caso_posse"] = cp
-                        st.toast("Dados extraídos! Confira na aba 2.", icon="✅")
+                        st.toast("Dados e memorial extraídos! Confira na aba 2.", icon="✅")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Erro na leitura: {e}")
+        if c_bt2.button("📐 Importar Só o Memorial (.docx/.rtf/.txt)", use_container_width=True):
+            mem_lido = extrair_trecho_memorial_posse(list(arq_mem_posse or []))
+            if mem_lido:
+                cp["memorial_descritivo"] = mem_lido
+                salvar_caso_posse(cp)
+                st.session_state["caso_posse"] = cp
+                st.toast("Memorial descritivo importado com sucesso! Confira na aba 2.", icon="✅")
+                st.rerun()
+            else:
+                st.warning("Anexe um memorial em .docx, .rtf ou .txt na caixa 2 para importar diretamente (ou use o botão de IA para PDF/foto).")
 
     with tab_p2:
         cp["tipo_instrumento"] = st.selectbox(
@@ -2281,7 +2430,7 @@ if st.session_state["modulo_ativo"] == "posse":
         c_a, c_b = st.columns(2)
         with c_a:
             if t_info["exige_outorgante"]:
-                lbl_out = "Vendedor(a) / Cedente" if "Compra" in cp["tipo_instrumento"] else "Doador(a)"
+                lbl_out = "Vendedor(a)" if "Compra" in cp["tipo_instrumento"] else "Doador(a)"
                 st.markdown(f"#### 👤 {lbl_out}")
                 cp["outorgante_nome"] = st.text_input(f"Nome do(a) {lbl_out}", value=cp.get("outorgante_nome", ""))
                 co1, co2 = st.columns(2)
@@ -2295,7 +2444,7 @@ if st.session_state["modulo_ativo"] == "posse":
                 cp["outorgante_conjuge_nome"] = co5.text_input(f"Cônjuge ({lbl_out}, se casado)", value=cp.get("outorgante_conjuge_nome", ""))
                 cp["outorgante_conjuge_cpf"] = co6.text_input(f"CPF Cônjuge ({lbl_out})", value=cp.get("outorgante_conjuge_cpf", ""))
 
-            lbl_pos = "Comprador(a)" if "Compra" in cp["tipo_instrumento"] else ("Donatário(a) — quem recebe" if "Doação" in cp["tipo_instrumento"] else "Possuidor(a) / Declarante")
+            lbl_pos = "Comprador(a)" if "Compra" in cp["tipo_instrumento"] else ("Recebedor(a) / Donatário(a)" if "Doação" in cp["tipo_instrumento"] else "Possuidor(a) / Declarante")
             st.markdown(f"#### 🧑 {lbl_pos}")
             cp["possuidor_nome"] = st.text_input(f"Nome do(a) {lbl_pos}", value=cp.get("possuidor_nome", ""))
             cp1, cp2 = st.columns(2)
@@ -2312,24 +2461,26 @@ if st.session_state["modulo_ativo"] == "posse":
                 cp["parentesco_doacao"] = st.text_input("Grau de parentesco (opcional, ex.: filho legítimo)", value=cp.get("parentesco_doacao", ""))
 
         with c_b:
-            st.markdown("#### 🌾 Dados da Área de Posse e Confrontantes")
-            cp["imovel_denominacao"] = st.text_input("Nome da Propriedade / Fazenda", value=cp.get("imovel_denominacao", ""))
+            st.markdown("#### 🌾 Dados da Área de Posse e Memorial Descritivo")
+            cp["imovel_denominacao"] = st.text_input("Nome da Propriedade / Fazenda (opcional)", value=cp.get("imovel_denominacao", ""))
             ci1, ci2 = st.columns(2)
             cp["imovel_comunidade"] = ci1.text_input("Comunidade / Lugar", value=cp.get("imovel_comunidade", ""))
             cp["imovel_municipio"] = ci2.text_input("Município (MG)", value=cp.get("imovel_municipio", "Pai Pedro"))
             cp["comarca_uf"] = st.text_input("Comarca (CRI)", value=cp.get("comarca_uf", "Porteirinha/MG"))
-            ci3, ci4, ci5 = st.columns(3)
+            ci3, ci4 = st.columns([1, 1.6])
             cp["area_ha"] = ci3.number_input("Área (ha)", value=float(cp.get("area_ha") or 0.0), format="%.4f")
-            cp["perimetro_m"] = ci4.number_input("Perímetro (m)", value=float(cp.get("perimetro_m") or 0.0), format="%.3f")
-            cp["tempo_posse_anos"] = ci5.text_input("Tempo de Posse (anos)", value=cp.get("tempo_posse_anos", ""))
-            cp["origem_posse"] = st.text_input("Origem da Posse", value=cp.get("origem_posse", "posse mansa, pacífica, contínua e de boa-fé"))
+            ci4.text_input("Área por Extenso (automático)", value=area_ha_por_extenso(cp["area_ha"]), disabled=True)
+            ci5, ci6 = st.columns(2)
+            cp["tempo_posse_anos"] = ci5.text_input("Tempo de Posse (anos — p/ Declaração)", value=cp.get("tempo_posse_anos", ""))
+            cp["origem_posse"] = ci6.text_input("Origem da Posse", value=cp.get("origem_posse", "posse mansa, pacífica, contínua e de boa-fé"))
 
-            cc_n, cc_s = st.columns(2)
-            cp["confrontante_norte"] = cc_n.text_input("Confrontante Norte", value=cp.get("confrontante_norte", ""))
-            cp["confrontante_sul"] = cc_s.text_input("Confrontante Sul", value=cp.get("confrontante_sul", ""))
-            cc_l, cc_o = st.columns(2)
-            cp["confrontante_leste"] = cc_l.text_input("Confrontante Leste", value=cp.get("confrontante_leste", ""))
-            cp["confrontante_oeste"] = cc_o.text_input("Confrontante Oeste", value=cp.get("confrontante_oeste", ""))
+            mem_atual = cp.get("memorial_descritivo") or cp.get("memorial_resumo") or ""
+            cp["memorial_descritivo"] = st.text_area(
+                "📐 Memorial Descritivo (inserido no corpo do Recibo de Doação, Recibo de Compra e Venda e Declaração de Posse)",
+                value=mem_atual,
+                height=210,
+                placeholder="Inicia-se a descrição deste perímetro no vértice M-004, georreferenciado no Sistema Geodésico Brasileiro, DATUM - SIRGAS2000...",
+            )
 
             st.markdown("#### 💰 Valor e Testemunhas")
             cv_p1, cv_p2 = st.columns([1, 1.4])
